@@ -1,0 +1,353 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String    @id @default(cuid()) @map("_id") // Use `cuid()` for unique ID generation
+  email            String    @unique
+  username         String    @unique
+  avatar           String?
+  password         String
+  city             String?
+  isAdmin          Boolean
+  isVerified       Boolean
+  verifyToken      String?
+  resetToken       String?
+  resetTokenExpiry DateTime?
+  updatedAt        DateTime  @updatedAt
+  createdAt        DateTime  @default(now())
+
+  codeExecutions      CodeExecution[]
+  snippets            Snippet[]
+  snippetComments     SnippetComment[]
+  stars               Star[]
+  solves              Solve[]
+  codes               Code[]
+  projects            Project[]
+  notifications       Notification[]
+  apiKeys             ApiKey[]
+  userAchievements    UserAchievement[]
+  feedbacks           Feedback[]
+  editorSettings      EditorSettings?
+  TeamMember          TeamMember[]
+  PromoCodeRedemption PromoCodeRedemption[]
+}
+
+model CodeExecution {
+  id       String  @id @default(cuid()) @map("_id")
+  userId   String
+  language String
+  code     String
+  output   String?
+  error    String?
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Snippet {
+  id       String @id @default(cuid()) @map("_id")
+  userId   String
+  title    String
+  language String
+  code     String
+  userName String
+
+  user     User             @relation(fields: [userId], references: [id])
+  comments SnippetComment[]
+  stars    Star[]
+}
+
+model SnippetComment {
+  id        String @id @default(cuid()) @map("_id")
+  snippetId String
+  userId    String
+  userName  String
+  content   String
+
+  snippet Snippet @relation(fields: [snippetId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+}
+
+model Star {
+  id        String @id @default(cuid()) @map("_id")
+  userId    String
+  snippetId String
+
+  user    User    @relation(fields: [userId], references: [id])
+  snippet Snippet @relation(fields: [snippetId], references: [id])
+}
+
+model Solve {
+  id           String  @id @default(cuid()) @map("_id")
+  problemId    String
+  userId       String
+  code         String
+  output       String?
+  isSuccessful Boolean
+  language     String
+
+  user    User    @relation(fields: [userId], references: [id])
+  problem Problem @relation(fields: [problemId], references: [id])
+}
+
+model Code {
+  id        String  @id @default(cuid()) @map("_id")
+  userId    String
+  code      String
+  language  String
+  problemId String?
+
+  user    User     @relation(fields: [userId], references: [id])
+  problem Problem? @relation(fields: [problemId], references: [id])
+}
+
+model Problem {
+  id          String              @id @default(cuid()) @map("_id")
+  title       String
+  description String
+  createdAt   DateTime            @default(now())
+  languages   ProblemLanguage[]
+  solves      Solve[]
+  codes       Code[]
+  problemSets ProblemSetProblem[]
+}
+
+model ProblemLanguage {
+  id              String   @id @default(cuid()) @map("_id")
+  problemId       String
+  language        String
+  starterTemplate String
+  expectedOutput  Json
+  createdAt       DateTime @default(now())
+
+  problem Problem @relation(fields: [problemId], references: [id])
+}
+
+model ProblemSet {
+  id          String              @id @default(cuid()) @map("_id")
+  title       String
+  description String
+  createdAt   DateTime            @default(now())
+  problems    ProblemSetProblem[]
+}
+
+model ProblemSetProblem {
+  id           String @id @default(cuid()) @map("_id")
+  problemSetId String
+  problemId    String
+
+  problemSet ProblemSet @relation(fields: [problemSetId], references: [id])
+  problem    Problem    @relation(fields: [problemId], references: [id])
+}
+
+model Project {
+  id          String   @id @default(cuid()) @map("_id")
+  userId      String
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  user         User          @relation(fields: [userId], references: [id])
+  folders      Folder[]
+  builds       Build[]
+  teamProjects TeamProject[]
+  File         File[]
+}
+
+model Folder {
+  id             String   @id @default(cuid()) @map("_id")
+  projectId      String
+  parentFolderId String?
+  name           String
+  createdAt      DateTime @default(now())
+
+  project      Project  @relation(fields: [projectId], references: [id])
+  parentFolder Folder?  @relation("FolderParent", fields: [parentFolderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  subFolders   Folder[] @relation("FolderParent")
+  files        File[]
+}
+
+model File {
+  id        String   @id @default(cuid()) @map("_id")
+  folderId  String?
+  projectId String?
+  name      String
+  content   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  folder  Folder?  @relation(fields: [folderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  project Project? @relation(fields: [projectId], references: [id])
+}
+
+model Build {
+  id        String   @id @default(cuid()) @map("_id")
+  projectId String
+  buildUrl  String
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(cuid()) @map("_id")
+  userId    String
+  type      String
+  content   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Team {
+  id          String   @id @default(cuid()) @map("_id")
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  members  TeamMember[]
+  projects TeamProject[]
+}
+
+model TeamMember {
+  id       String   @id @default(cuid()) @map("_id")
+  teamId   String
+  userId   String
+  role     String   @default("member")
+  joinedAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+}
+
+model TeamProject {
+  id        String   @id @default(cuid()) @map("_id")
+  teamId    String
+  projectId String
+  sharedAt  DateTime @default(now())
+
+  team    Team    @relation(fields: [teamId], references: [id])
+  project Project @relation(fields: [projectId], references: [id])
+}
+
+model Tag {
+  id             String           @id @default(cuid()) @map("_id")
+  name           String           @unique
+  TagAssociation TagAssociation[]
+}
+
+model TagAssociation {
+  id         String @id @default(cuid()) @map("_id")
+  tagId      String
+  targetId   String
+  targetType String
+
+  tag Tag @relation(fields: [tagId], references: [id])
+}
+
+model ApiKey {
+  id          String    @id @default(cuid()) @map("_id")
+  userId      String
+  key         String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  lastUsedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Log {
+  id         String   @id @default(cuid()) @map("_id")
+  action     String
+  targetId   String
+  targetType String
+  details    String
+  createdAt  DateTime @default(now())
+}
+
+model Achievement {
+  id              String            @id @default(cuid()) @map("_id")
+  name            String            @unique
+  description     String
+  UserAchievement UserAchievement[]
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid()) @map("_id")
+  userId        String
+  achievementId String
+  achievedAt    DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id])
+  achievement Achievement @relation(fields: [achievementId], references: [id])
+}
+
+model PromoCode {
+  id                  String                @id @default(cuid()) @map("_id")
+  code                String                @unique
+  description         String
+  discountType        String
+  discountValue       Int
+  currency            String
+  maxRedemptions      Int
+  timesRedeemed       Int                   @default(0)
+  validFrom           DateTime
+  validUntil          DateTime?
+  isActive            Boolean               @default(true)
+  createdAt           DateTime              @default(now())
+  PromoCodeRedemption PromoCodeRedemption[]
+}
+
+model PromoCodeRedemption {
+  id          String   @id @default(cuid()) @map("_id")
+  promoCodeId String
+  userId      String
+  redeemedAt  DateTime @default(now())
+
+  promoCode PromoCode @relation(fields: [promoCodeId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+}
+
+model Feedback {
+  id          String   @id @default(cuid()) @map("_id")
+  userId      String?
+  title       String
+  description String
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+}
+
+model Translation {
+  id        String   @id @default(cuid()) @map("_id")
+  key       String   @unique
+  language  String
+  value     String
+  createdAt DateTime @default(now())
+}
+
+model EditorSettings {
+  id                   String   @id @default(cuid()) @map("_id")
+  userId               String   @unique
+  theme                String   @default("dark")
+  editorTheme          String   @default("monokai")
+  fontSize             Int      @default(14)
+  language             String   @default("en")
+  notificationsEnabled Boolean  @default(true)
+  createdAt            DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
