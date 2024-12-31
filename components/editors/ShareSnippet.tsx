@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import MultiFileSelect from "../MultiFileSelect";
 
 import useFileStore from "@/store/fileStore";
+import { axiosInstance } from "@/hooks/useAxios";
 
 type Props = {
   open: boolean;
@@ -30,6 +31,7 @@ const ShareSnippet = ({ onOpenChange, open }: Props) => {
   >([]);
   const [snippetName, setSnippetName] = useState("");
   const { getFiles } = useFileStore();
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleFileSelect = (
     files:
@@ -47,13 +49,32 @@ const ShareSnippet = ({ onOpenChange, open }: Props) => {
     }
   };
 
-  const handleShareSnippet = (onClose: () => void) => {
-    console.log("Snippet Name: ", snippetName);
-    console.log("Selected Files: ", selectedFiles);
-    toast.success("Snippet shared successfully!", {
-      description: `Snippet \`${snippetName}\` shared successfully!`,
-    });
-    onClose();
+  const handleShareSnippet = async (onClose: () => void) => {
+    setIsLoading(true);
+    try {
+      const response = await axiosInstance.post("/snippets", {
+        name: snippetName,
+        content: selectedFiles[0].content,
+      });
+
+      if (response.status === 201) {
+        toast.success("Snippet başarıyla paylaşıldı!", {
+          description: `\`${snippetName}\` snippet'i başarıyla paylaşıldı!`,
+        });
+      } else {
+        toast.error("Snippet paylaşılırken bir hata oluştu.", {
+          description: `\`${snippetName}\` snippet'i paylaşılırken bir hata oluştu.`,
+        });
+      }
+    } catch (error) {
+      console.error("Snippet paylaşma hatası:", error);
+      toast.error("Snippet paylaşılırken bir hata oluştu.", {
+        description: `\`${snippetName}\` snippet'i paylaşılırken bir hata oluştu.`,
+      });
+    } finally {
+      setIsLoading(false);
+      onClose();
+    }
   };
 
   return (
@@ -102,6 +123,7 @@ const ShareSnippet = ({ onOpenChange, open }: Props) => {
                 Close
               </Button>
               <Button
+                isLoading={isLoading}
                 color="primary"
                 size="sm"
                 onPress={() => handleShareSnippet(onClose)}
