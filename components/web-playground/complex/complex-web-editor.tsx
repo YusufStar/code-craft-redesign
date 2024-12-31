@@ -3,7 +3,7 @@ import type { editor } from "monaco-editor";
 
 import { useState, useRef, useEffect } from "react";
 import { Image } from "@nextui-org/image";
-import MonacoEditor, { EditorProps, type Monaco } from "@monaco-editor/react";
+import { EditorProps, type Monaco } from "@monaco-editor/react";
 import { shikiToMonaco } from "@shikijs/monaco";
 import { getHighlighter } from "shiki/bundle/web";
 import { Play, Plus, Settings, Trash, X } from "lucide-react";
@@ -14,6 +14,25 @@ import NewFunctionModal from "./new-function-modal";
 import { languageIcons } from "@/constants/icons";
 import EditorSettings from "@/components/editors/EditorSettings";
 import { convertToMarkerData, Violations } from "@/modules/violations";
+import { Skeleton } from "@nextui-org/skeleton";
+import dynamic from "next/dynamic";
+
+const generateRandomWidth = () => `${Math.floor(Math.random() * 75) + 25}%`;
+
+const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex flex-col gap-2 p-1">
+      {Array.from({ length: 10 }).map((_, index) => (
+        <Skeleton
+          key={index}
+          className={`h-3 rounded`}
+          style={{ width: generateRandomWidth() }}
+        />
+      ))}
+    </div>
+  ),
+});
 
 const editorOptions: EditorProps["options"] = {
   automaticLayout: true,
@@ -374,34 +393,42 @@ const ComplexWebEditor = () => {
                   }
                 >
                   <div className="text-sm text-gray-400">
-                    <strong className="text-xs">{index + 1}. </strong>
                     {func.function_name}
                   </div>
 
-                  <div className="flex items-center gap-0.5">
-                    <button
-                      className="p-1.5 hover:bg-gray-700 rounded-md transition-colors"
-                      title="Edit Function"
-                    >
-                      <Settings className="w-4 h-4 text-gray-400" />
-                    </button>
-                    <button
-                      className="p-1.5 hover:bg-gray-700 rounded-md transition-colors"
-                      title="Delete Function"
-                      onClick={() => {
-                        if (func.function_name.toLowerCase() === "app") return;
-                        if (selectedFunction === func.function_name) {
-                          setSelectedFunction(null);
-                          setEditorValue("");
-                        }
-                        setFunctions((prev) =>
-                          prev.filter((_, i) => i !== index)
-                        );
-                      }}
-                    >
-                      <Trash className="w-4 h-4 text-red-500" />
-                    </button>
-                  </div>
+                  {func.function_name !== "App" && (
+                    <div className="flex items-center gap-0.5">
+                      <button
+                        className="p-1.5 hover:bg-gray-700 rounded-md transition-colors"
+                        title="Edit Function"
+                      >
+                        <Settings className="w-4 h-4 text-gray-400" />
+                      </button>
+                      <button
+                        className="p-1.5 hover:bg-gray-700 rounded-md transition-colors"
+                        title="Delete Function"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          if (func.function_name.toLowerCase() === "app")
+                            return;
+
+                          if (selectedFunction === func.function_name) {
+                            handleFunctionSelect(
+                              "App",
+                              functions[0].function_code
+                            );
+                          }
+
+                          setFunctions((prev) =>
+                            prev.filter((_, i) => i !== index)
+                          );
+                        }}
+                      >
+                        <Trash className="w-4 h-4 text-red-500" />
+                      </button>
+                    </div>
+                  )}
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -428,9 +455,9 @@ const ComplexWebEditor = () => {
                   width={16}
                 />
                 <span className="text-sm text-gray-400">
-                  {selectedFunction || editorLanguage === "css"
-                    ? "Style"
-                    : "Test (component)"}
+                  {editorLanguage.toLowerCase() === "css"
+                    ? "Css"
+                    : selectedFunction}
                 </span>
               </div>
             </div>

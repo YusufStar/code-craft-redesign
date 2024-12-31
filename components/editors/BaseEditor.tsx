@@ -1,5 +1,6 @@
 "use client";
 import { memo, useState, useEffect, useRef } from "react";
+import { Skeleton } from "@nextui-org/skeleton";
 import dynamic from "next/dynamic";
 import { Download, Copy, Settings, X, Share, Check } from "lucide-react";
 import { Image } from "@nextui-org/image";
@@ -18,9 +19,21 @@ import useFileStore from "@/store/fileStore";
 import { getLanguage } from "@/modules/monaco-editor";
 import { updateFileContent } from "@/actions/fileActions";
 
+const generateRandomWidth = () => `${Math.floor(Math.random() * 75) + 25}%`;
+
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
-  loading: () => <div>loading...</div>,
+  loading: () => (
+    <div className="flex flex-col gap-2 p-1">
+      {Array.from({ length: 25 }).map((_, index) => (
+        <Skeleton
+          key={index}
+          className={`h-3 rounded`}
+          style={{ width: generateRandomWidth() }}
+        />
+      ))}
+    </div>
+  ),
 });
 
 const BaseEditor = memo(() => {
@@ -280,7 +293,7 @@ const BaseEditor = memo(() => {
                 key={`editor-${"javascript"}`}
                 className={`w-full h-full ${
                   monacoRef.current ? "block" : "hidden"
-                }`}
+                } overflow-hidden`}
                 height="100%"
                 keepCurrentModel={false}
                 language={

@@ -23,27 +23,51 @@ const NewFunctionModal: React.FC<NewFunctionModalProps> = ({
   existingFunctionNames,
 }) => {
   const [functionName, setFunctionName] = useState("");
-  const [functionCode, setFunctionCode] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  const formatFunctionName = (name: string) => {
+    const trimmedName = name.trim();
+    const words = trimmedName.split(/[\s-]+/);
+    const formattedWords = words.map(
+      (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    );
+    return formattedWords.join("");
+  };
+
+  const generateDefaultCode = (formattedName: string) => {
+    return `
+function ${formattedName}() {
+    return (
+        <div>
+        </div>
+    );
+}
+`;
+  };
 
   const handleAdd = () => {
     const normalizedFunctionName = functionName.trim().toLowerCase();
 
-    if (existingFunctionNames.map(name => name.toLowerCase()).includes(normalizedFunctionName)) {
+    if (
+      existingFunctionNames
+        .map((name) => name.toLowerCase())
+        .includes(normalizedFunctionName)
+    ) {
       setError("Bu fonksiyon adı zaten kullanılıyor.");
 
       return;
     }
     if (!functionName.trim()) {
-        setError("Fonksiyon adı boş olamaz.");
+      setError("Fonksiyon adı boş olamaz.");
 
-        return;
+      return;
     }
     setError(null);
-    onAddFunction(functionName, functionCode);
+    const formattedName = formatFunctionName(functionName);
+    const defaultCode = generateDefaultCode(formattedName);
+    onAddFunction(formattedName, defaultCode);
     onOpenChange(false);
     setFunctionName("");
-    setFunctionCode("");
   };
 
   return (

@@ -11,7 +11,7 @@ import {
   Trash,
 } from "lucide-react";
 import clsx from "clsx";
-import { ScrollShadow, Button, Input } from "@nextui-org/react";
+import { ScrollShadow, Button, Input, Skeleton } from "@nextui-org/react";
 import { Image } from "@nextui-org/image";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -415,12 +415,22 @@ const FileManagerTab = () => {
     }
   };
 
+  const generateRandomWidth = () => `${Math.floor(Math.random() * 75) + 25}%`;
+
   return (
     <div className="relative h-full">
       <div className="relative h-full bg-[#0d0d12] rounded-xl p-2 ring-1 ring-gray-800/50 overflow-hidden">
         <ScrollShadow className="h-full">
           {loading ? (
-            <div className="text-gray-300 text-center py-4">Loading...</div>
+            <div className="flex flex-col gap-2 p-1">
+              {Array.from({ length: 10 }).map((_, index) => (
+                <Skeleton
+                  key={index}
+                  className={`h-3 rounded`}
+                  style={{ width: generateRandomWidth() }}
+                />
+              ))}
+            </div>
           ) : showCreateRootFolder ? (
             <div className="flex items-center justify-center h-full gap-2">
               <Input

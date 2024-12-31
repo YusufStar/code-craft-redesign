@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Image } from "@nextui-org/image";
 import { Download, Fullscreen, Settings } from "lucide-react";
-import MonacoEditor, { EditorProps, type Monaco } from "@monaco-editor/react";
+import { EditorProps, type Monaco } from "@monaco-editor/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { saveAs } from "file-saver";
 import JSZip from "jszip";
@@ -12,6 +12,25 @@ import { editor } from "monaco-editor";
 
 import { languageIcons } from "@/constants/icons";
 import EditorSettings from "@/components/editors/EditorSettings";
+import { Skeleton } from "@nextui-org/skeleton";
+import dynamic from "next/dynamic";
+
+const generateRandomWidth = () => `${Math.floor(Math.random() * 75) + 25}%`;
+
+const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex flex-col gap-2 p-1">
+      {Array.from({ length: 10 }).map((_, index) => (
+        <Skeleton
+          key={index}
+          className={`h-3 rounded`}
+          style={{ width: generateRandomWidth() }}
+        />
+      ))}
+    </div>
+  ),
+});
 
 const editorOptions: EditorProps["options"] = {
   automaticLayout: true,
