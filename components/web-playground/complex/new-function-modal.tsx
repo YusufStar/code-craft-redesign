@@ -31,6 +31,7 @@ const NewFunctionModal: React.FC<NewFunctionModalProps> = ({
     const formattedWords = words.map(
       (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
     );
+
     return formattedWords.join("");
   };
 
@@ -65,6 +66,7 @@ function ${formattedName}() {
     setError(null);
     const formattedName = formatFunctionName(functionName);
     const defaultCode = generateDefaultCode(formattedName);
+
     onAddFunction(formattedName, defaultCode);
     onOpenChange(false);
     setFunctionName("");

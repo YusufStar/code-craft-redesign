@@ -9,11 +9,11 @@ import JSZip from "jszip";
 import { shikiToMonaco } from "@shikijs/monaco";
 import { getHighlighter } from "shiki/bundle/web";
 import { editor } from "monaco-editor";
+import { Skeleton } from "@nextui-org/skeleton";
+import dynamic from "next/dynamic";
 
 import { languageIcons } from "@/constants/icons";
 import EditorSettings from "@/components/editors/EditorSettings";
-import { Skeleton } from "@nextui-org/skeleton";
-import dynamic from "next/dynamic";
 
 const generateRandomWidth = () => `${Math.floor(Math.random() * 75) + 25}%`;
 

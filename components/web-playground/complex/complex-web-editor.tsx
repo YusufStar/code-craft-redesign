@@ -8,14 +8,14 @@ import { shikiToMonaco } from "@shikijs/monaco";
 import { getHighlighter } from "shiki/bundle/web";
 import { Play, Plus, Settings, Trash, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { Skeleton } from "@nextui-org/skeleton";
+import dynamic from "next/dynamic";
 
 import NewFunctionModal from "./new-function-modal";
 
 import { languageIcons } from "@/constants/icons";
 import EditorSettings from "@/components/editors/EditorSettings";
 import { convertToMarkerData, Violations } from "@/modules/violations";
-import { Skeleton } from "@nextui-org/skeleton";
-import dynamic from "next/dynamic";
 
 const generateRandomWidth = () => `${Math.floor(Math.random() * 75) + 25}%`;
 

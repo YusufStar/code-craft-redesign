@@ -12,6 +12,7 @@ import { ChevronDownIcon, SearchIcon } from "lucide-react";
 import { useState, useMemo } from "react";
 
 export interface FileType {
+  id: string;
   name: string;
   type: "file";
   content: string;

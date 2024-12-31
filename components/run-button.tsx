@@ -17,6 +17,8 @@ import { toast } from "sonner";
 import { FileType } from "./MultiFileSelect";
 
 import useFileStore from "@/store/fileStore";
+import { axiosInstance } from "@/hooks/useAxios";
+import useEditorStore from "@/store/editorStore";
 
 function RunButton({ small }: { small?: boolean }) {
   const [open, setOpen] = useState(false);
@@ -64,7 +66,6 @@ function RunDialog({
   open: boolean;
   onChange: (newVal: boolean) => void;
 }) {
-  const [loading, setLoading] = useState(false);
   const [states, setStates] = useState<{
     executionType: string;
     executionFiles: FileType[];
@@ -77,6 +78,14 @@ function RunDialog({
   const isPro = false;
   const { getFiles } = useFileStore();
   const files = getFiles();
+  const [selectedLanguage, setSelectedLanguage] = useState("javascript");
+  const {
+    setOutput,
+    setIsRightPanelOpen,
+    setActiveTab,
+    isRunning,
+    setIsRunning,
+  } = useEditorStore();
 
   const handleChange = (key: string, value: FileType[] | string) => {
     setStates((prev) => ({ ...prev, [key]: value as any }));
@@ -91,23 +100,34 @@ function RunDialog({
     }
   }, [states.executionFiles, isPro]);
 
-  const handleRun = (onClose: () => void) => {
-    setLoading(true);
+  const handleRun = async (onClose: () => void) => {
+    try {
+      setIsRunning(true);
 
-    toast.promise(
-      new Promise((resolve) => {
-        setTimeout(() => {
-          resolve("Code ran successfully!");
-          setLoading(false);
-          onClose();
-        }, 2000);
-      }),
-      {
-        loading: "Running code...",
-        success: "Code ran successfully!",
-        error: "Failed to run code!",
-      }
-    );
+      const apiUrl = "/build";
+
+      const { data } = await axiosInstance.post(apiUrl, {
+        executionType: states.executionType,
+        executionFiles: states.executionFiles,
+        runType: states.runType,
+        language: selectedLanguage,
+      });
+
+      setOutput({ logs: [], result: data.result ?? "", error: null });
+      setActiveTab("output");
+      setIsRightPanelOpen(true);
+
+      toast.success("Code executed successfully!");
+    } catch (error: any) {
+      console.error("API Error:", error);
+
+      setOutput({ logs: [], result: null, error: error.message });
+
+      toast.error(error.message || "Failed to run code!");
+    } finally {
+      setIsRunning(false);
+      onClose();
+    }
   };
 
   return (
@@ -129,7 +149,7 @@ function RunDialog({
 
             <div className="flex flex-col gap-4 px-4">
               <Select
-                disabled={loading}
+                disabled={isRunning}
                 label="Execution Type"
                 placeholder="Select an option"
                 size="sm"
@@ -146,7 +166,7 @@ function RunDialog({
                 <SelectSection>
                   <SelectItem
                     key="one_file"
-                    isDisabled={loading}
+                    isDisabled={isRunning}
                     startContent={
                       <Sparkles className="w-4 h-4 text-blue-600" />
                     }
@@ -156,7 +176,7 @@ function RunDialog({
                   </SelectItem>
                   <SelectItem
                     key="all_project"
-                    isDisabled={loading || !isPro}
+                    isDisabled={isRunning || !isPro}
                     startContent={
                       isPro ? (
                         <Sparkles className="w-4 h-4 text-blue-600" />
@@ -180,14 +200,14 @@ function RunDialog({
                     initial={{ opacity: 0 }}
                   >
                     <Select
-                      disabled={loading}
+                      disabled={isRunning}
                       label="Execution File"
                       placeholder="Select an option"
                       size="sm"
-                      value={states.executionFiles[0]?.name}
+                      value={states.executionFiles[0]?.id}
                       onChange={(e) => {
                         const selectedFile = files.find(
-                          (file) => file.name === e.target.value
+                          (file) => file.id === e.target.value
                         );
 
                         if (selectedFile) {
@@ -196,15 +216,17 @@ function RunDialog({
                       }}
                     >
                       <SelectSection>
-                        {files.map((file) => (
-                          <SelectItem
-                            key={file.name}
-                            isDisabled={loading}
-                            value={file.name}
-                          >
-                            {file.name}
-                          </SelectItem>
-                        ))}
+                        {files.map((file) => {
+                          return (
+                            <SelectItem
+                              key={file.id}
+                              isDisabled={isRunning}
+                              value={file.id}
+                            >
+                              {file.name}
+                            </SelectItem>
+                          );
+                        })}
                       </SelectSection>
                     </Select>
                   </motion.div>
@@ -219,14 +241,14 @@ function RunDialog({
                   >
                     <Select
                       description="Select the main file to run"
-                      disabled={loading}
+                      disabled={isRunning}
                       label="Main File"
                       placeholder="Select an option"
                       size="sm"
-                      value={states.executionFiles[0]?.name}
+                      value={states.executionFiles[0]?.id}
                       onChange={(e) => {
                         const selectedFile = files.find(
-                          (file) => file.name === e.target.value
+                          (file) => file.id === e.target.value
                         );
 
                         if (selectedFile) {
@@ -237,9 +259,9 @@ function RunDialog({
                       <SelectSection>
                         {files.map((file) => (
                           <SelectItem
-                            key={file.name}
-                            isDisabled={loading}
-                            value={file.name}
+                            key={file.id}
+                            isDisabled={isRunning}
+                            value={file.id}
                           >
                             {file.name}
                           </SelectItem>
@@ -258,7 +280,7 @@ function RunDialog({
                 >
                   <Select
                     description="Select the type of project to run"
-                    disabled={loading}
+                    disabled={isRunning}
                     label="Run Type"
                     placeholder="Select an option"
                     size="sm"
@@ -270,7 +292,7 @@ function RunDialog({
                     <SelectSection>
                       <SelectItem
                         key="ui_component"
-                        isDisabled={loading || !isPro}
+                        isDisabled={isRunning || !isPro}
                         startContent={
                           isPro ? (
                             <Sparkles className="w-4 h-4 text-blue-600" />
@@ -284,7 +306,7 @@ function RunDialog({
                       </SelectItem>
                       <SelectItem
                         key="console_app"
-                        isDisabled={loading}
+                        isDisabled={isRunning}
                         startContent={
                           <Sparkles className="w-4 h-4 text-blue-600" />
                         }
@@ -296,12 +318,30 @@ function RunDialog({
                   </Select>
                 </motion.div>
               </AnimatePresence>
+
+              <Select
+                label="Language"
+                placeholder="Select a language"
+                size="sm"
+                value={selectedLanguage}
+                onChange={(e) => setSelectedLanguage(e.target.value)}
+              >
+                <SelectSection>
+                  <SelectItem key="javascript" value="javascript">
+                    JavaScript
+                  </SelectItem>
+                  <SelectItem key="python" value="python">
+                    Python
+                  </SelectItem>
+                  {/* Diğer dilleri buraya ekleyin */}
+                </SelectSection>
+              </Select>
             </div>
 
             <ModalFooter>
               <Button
                 color="danger"
-                disabled={loading}
+                disabled={isRunning}
                 size="sm"
                 onClick={onClose}
               >
@@ -309,11 +349,11 @@ function RunDialog({
               </Button>
               <Button
                 color="primary"
-                disabled={loading}
+                disabled={isRunning}
                 size="sm"
                 onClick={() => handleRun(onClose)}
               >
-                {loading ? (
+                {isRunning ? (
                   <div className="relative flex items-center justify-center w-4 h-4">
                     <Loader2 className="w-4 h-4 text-white/90 animate-spin" />
                   </div>

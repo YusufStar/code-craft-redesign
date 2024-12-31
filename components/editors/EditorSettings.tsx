@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React from "react";
 import {
   Modal,
   ModalContent,
@@ -15,6 +15,7 @@ import { Avatar } from "@nextui-org/react";
 import { toast } from "sonner";
 
 import { languageIcons } from "@/constants/icons";
+import useEditorStore from "@/store/editorStore";
 
 type Props = {
   open: boolean;
@@ -22,18 +23,10 @@ type Props = {
 };
 
 const EditorSettings = ({ onOpenChange, open }: Props) => {
-  const [settings, setSettings] = useState<{
-    fontSize: number;
-    language: string;
-    theme: string;
-  }>({
-    fontSize: 14,
-    language: "javascript",
-    theme: "dark-plus",
-  });
+  const { editorSettings, setEditorSettings } = useEditorStore();
 
   const handleChangeSetting = (key: string, value: any) => {
-    setSettings((prev) => ({ ...prev, [key]: value }));
+    setEditorSettings({ [key]: value });
   };
 
   const handleSaveSettings = (onClose: () => void) => {
@@ -60,7 +53,7 @@ const EditorSettings = ({ onOpenChange, open }: Props) => {
                     min={10}
                     size="sm"
                     type="number"
-                    value={settings.fontSize.toString()}
+                    value={editorSettings.fontSize.toString()}
                     onChange={(e) =>
                       handleChangeSetting("fontSize", e.target.value)
                     }
@@ -71,8 +64,10 @@ const EditorSettings = ({ onOpenChange, open }: Props) => {
                   minValue={10}
                   size="sm"
                   step={0.5}
-                  value={settings.fontSize}
-                  onChange={(value) => handleChangeSetting("fontSize", value)}
+                  value={editorSettings.fontSize}
+                  onChange={(value) =>
+                    handleChangeSetting("fontSize", value as number)
+                  }
                 />
               </div>
 
@@ -82,8 +77,10 @@ const EditorSettings = ({ onOpenChange, open }: Props) => {
                 label="Select Language"
                 placeholder="Editor Language"
                 size="md"
-                value={settings.language}
-                onChange={(value) => handleChangeSetting("language", value)}
+                value={editorSettings.language}
+                onChange={(value) =>
+                  handleChangeSetting("language", value.currentKey)
+                }
               >
                 <SelectSection>
                   {Object.keys(languageIcons).map((lang) => (
@@ -110,8 +107,10 @@ const EditorSettings = ({ onOpenChange, open }: Props) => {
                 label="Select Theme"
                 placeholder="Editor Theme"
                 size="md"
-                value={settings.theme}
-                onChange={(value) => handleChangeSetting("theme", value)}
+                value={editorSettings.theme}
+                onChange={(value) =>
+                  handleChangeSetting("theme", value.currentKey)
+                }
               >
                 <SelectSection>
                   <SelectItem value="dark-plus">Dark</SelectItem>

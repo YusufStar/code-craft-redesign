@@ -2,7 +2,6 @@
 
 import { ChevronLeft } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useState } from "react";
 import { Terminal, BrainCircuit, Users } from "lucide-react";
 import clsx from "clsx";
 import { Button } from "@nextui-org/button";
@@ -13,16 +12,19 @@ import {
   DrawerHeader,
 } from "@nextui-org/drawer";
 
+
 import OutputTab from "./panel-tabs/OutputTab";
 import AIChatTab from "./panel-tabs/AIChatTab";
 import CollaborationTab from "./panel-tabs/CollaborationTab";
 import FileManagerTab from "./panel-tabs/FileManagerTab";
 
+import useEditorStore from "@/store/editorStore";
+
 type TabType = "files" | "output" | "ai" | "collaboration";
 
 export default function RightPanel() {
-  const [activeTab, setActiveTab] = useState<TabType>("files");
-  const [isPanelOpen, setPanelOpen] = useState(false);
+  const { activeTab, setActiveTab, isRightPanelOpen, setIsRightPanelOpen } =
+    useEditorStore();
 
   const tabs = [
     {
@@ -55,7 +57,7 @@ export default function RightPanel() {
     <>
       {/* Button to open the panel, positioned vertically centered */}
       <AnimatePresence>
-        {!isPanelOpen && (
+        {!isRightPanelOpen && (
           <Button
             isIconOnly
             animate={{ right: -16, scale: 1, opacity: 1 }}
@@ -72,7 +74,7 @@ export default function RightPanel() {
             }}
             whileHover={{ scale: 1.1, right: 0 }}
             whileTap={{ scale: 0.9 }}
-            onClick={() => setPanelOpen(!isPanelOpen)}
+            onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
           >
             <ChevronLeft
               className={`
@@ -85,7 +87,7 @@ export default function RightPanel() {
 
       {/* Sliding panel */}
       <Drawer
-        isOpen={isPanelOpen}
+        isOpen={isRightPanelOpen}
         motionProps={{
           variants: {
             enter: {
@@ -99,7 +101,7 @@ export default function RightPanel() {
           },
           transition: { duration: 0.3 },
         }}
-        onOpenChange={setPanelOpen}
+        onOpenChange={setIsRightPanelOpen}
       >
         <DrawerContent>
           <DrawerHeader className="flex flex-col gap-1">
