@@ -300,7 +300,7 @@ const FileTreeItem = ({
             initial={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2, ease: "easeInOut" }}
           >
-            {(item as FolderType).children.map((child) => (
+            {item.children && (item as FolderType).children.map((child) => (
               <FileTreeItem
                 key={child.id}
                 depth={depth + 1}
@@ -310,7 +310,7 @@ const FileTreeItem = ({
                 onSelectFile={onSelectFile}
               />
             ))}
-            {(item as FolderType).files.map((child) => (
+            {item.files && (item as FolderType).files.map((child) => (
               <FileTreeItem
                 key={child.id}
                 depth={depth + 1}

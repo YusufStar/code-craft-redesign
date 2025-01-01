@@ -3,9 +3,8 @@ import type { editor } from "monaco-editor";
 
 import { useState, useRef, useEffect } from "react";
 import { Image } from "@nextui-org/image";
-import { EditorProps, type Monaco } from "@monaco-editor/react";
+import { type Monaco } from "@monaco-editor/react";
 import { shikiToMonaco } from "@shikijs/monaco";
-import { getHighlighter } from "shiki/bundle/web";
 import { Play, Plus, Settings, Trash, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Skeleton } from "@nextui-org/skeleton";
@@ -16,6 +15,7 @@ import NewFunctionModal from "./new-function-modal";
 import { languageIcons } from "@/constants/icons";
 import EditorSettings from "@/components/editors/EditorSettings";
 import { convertToMarkerData, Violations } from "@/modules/violations";
+import useEditorStore from "@/store/editorStore";
 
 const generateRandomWidth = () => `${Math.floor(Math.random() * 75) + 25}%`;
 
@@ -34,43 +34,8 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
   ),
 });
 
-const editorOptions: EditorProps["options"] = {
-  automaticLayout: true,
-  fontSize: 14,
-  minimap: { enabled: false },
-  padding: { top: 12, bottom: 12 },
-  scrollBeyondLastLine: false,
-  scrollbar: { vertical: "hidden", horizontal: "hidden" },
-  wordWrap: "on",
-  folding: true,
-  suggestOnTriggerCharacters: true,
-  suggest: { showIcons: false },
-  lineNumbers: "on" as editor.LineNumbersType,
-  roundedSelection: false,
-  autoClosingBrackets: "always",
-  autoClosingOvertype: "always",
-  autoClosingQuotes: "always",
-  autoIndent: "full",
-  autoClosingComments: "always",
-  autoClosingDelete: "always",
-  renderWhitespace: "none",
-  renderLineHighlight: "line",
-  cursorBlinking: "solid",
-  quickSuggestions: true,
-  acceptSuggestionOnEnter: "off",
-  contextmenu: false,
-  occurrencesHighlight: "multiFile",
-  selectionHighlight: true,
-  codeLens: false,
-  renderControlCharacters: true,
-  hideCursorInOverviewRuler: true,
-  overviewRulerBorder: true,
-  overviewRulerLanes: 0,
-  formatOnPaste: true,
-  formatOnType: true,
-};
-
 const ComplexWebEditor = () => {
+  const { getEditorSettings } = useEditorStore();
   const [settingsModal, setSettingsModal] = useState(false);
   const [functions, setFunctions] = useState<
     {
@@ -105,6 +70,8 @@ const ComplexWebEditor = () => {
   const [violations, setViolations] = useState<Violations>([]);
   const monacoRef = useRef<Monaco | null>(null);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const { highlighter } = useEditorStore();
+  const shikiLoaded = useRef(false);
 
   useEffect(() => {
     const markers = convertToMarkerData(violations);
@@ -120,6 +87,17 @@ const ComplexWebEditor = () => {
       setEditorHeight(reactEditorRef.current.clientHeight - 40);
     }
   }, []);
+
+  useEffect(() => {
+    const loadShiki = async () => {
+      if (monacoRef.current && !shikiLoaded.current && highlighter) {
+        shikiToMonaco(highlighter, monacoRef.current);
+        shikiLoaded.current = true;
+      }
+    };
+
+    loadShiki();
+  }, [monacoRef.current, shikiLoaded.current, highlighter]);
 
   const handleSettings = () => {
     setSettingsModal(true);
@@ -465,34 +443,12 @@ const ComplexWebEditor = () => {
           <MonacoEditor
             height={editorHeight}
             language={editorLanguage}
-            options={editorOptions}
-            theme="dark-plus"
+            options={getEditorSettings()}
             value={editorValue}
             onChange={handleEditorChange}
             onMount={(editor, monaco) => {
-              editorRef.current = editor;
               monacoRef.current = monaco;
               handleEditorDidMount(editor);
-              void (async () => {
-                const ADDITIONAL_LANGUAGES = [
-                  "jsx",
-                  "tsx",
-                ] as const satisfies Parameters<
-                  typeof getHighlighter
-                >[0]["langs"];
-
-                for (const lang of ADDITIONAL_LANGUAGES) {
-                  monacoRef.current?.languages.register({ id: lang });
-                }
-
-                const highlighter = await getHighlighter({
-                  themes: ["dark-plus"],
-                  langs: ADDITIONAL_LANGUAGES,
-                });
-
-                // https://shiki.matsu.io/packages/monaco
-                shikiToMonaco(highlighter, monacoRef.current);
-              })();
             }}
           />
         </div>

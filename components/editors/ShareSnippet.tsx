@@ -52,20 +52,14 @@ const ShareSnippet = ({ onOpenChange, open }: Props) => {
   const handleShareSnippet = async (onClose: () => void) => {
     setIsLoading(true);
     try {
-      const response = await axiosInstance.post("/snippets", {
+      await axiosInstance.post("/snippets", {
         name: snippetName,
         content: selectedFiles[0].content,
       });
 
-      if (response.status === 201) {
-        toast.success("Snippet başarıyla paylaşıldı!", {
-          description: `\`${snippetName}\` snippet'i başarıyla paylaşıldı!`,
-        });
-      } else {
-        toast.error("Snippet paylaşılırken bir hata oluştu.", {
-          description: `\`${snippetName}\` snippet'i paylaşılırken bir hata oluştu.`,
-        });
-      }
+      toast.success("Snippet başarıyla paylaşıldı!", {
+        description: `\`${snippetName}\` snippet'i başarıyla paylaşıldı!`,
+      });
     } catch (error) {
       console.error("Snippet paylaşma hatası:", error);
       toast.error("Snippet paylaşılırken bir hata oluştu.", {
@@ -123,8 +117,8 @@ const ShareSnippet = ({ onOpenChange, open }: Props) => {
                 Close
               </Button>
               <Button
-                isLoading={isLoading}
                 color="primary"
+                isLoading={isLoading}
                 size="sm"
                 onPress={() => handleShareSnippet(onClose)}
               >

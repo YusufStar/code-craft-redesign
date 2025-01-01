@@ -4,6 +4,8 @@ import axios from "axios";
 import { useEffect } from "react";
 
 import { useAuthStore } from "@/store/authStore";
+import useEditorStore from "@/store/editorStore";
+import { initializeHighlighter } from "@/modules/highlighter";
 
 export const axiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
@@ -11,6 +13,7 @@ export const axiosInstance = axios.create({
 
 export const AxiosProvider = ({ children }: { children: React.ReactNode }) => {
   const { logout, getUser } = useAuthStore();
+  const { setHighlighter } = useEditorStore();
   const localStorageTokenKey = "auth";
 
   useEffect(() => {
@@ -42,7 +45,12 @@ export const AxiosProvider = ({ children }: { children: React.ReactNode }) => {
       }
     );
 
-    getUser();
+    void (async () => {
+      const highlighter = await initializeHighlighter();
+
+      setHighlighter(highlighter);
+      getUser();
+    })();
   }, []);
 
   return children;

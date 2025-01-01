@@ -1,8 +1,6 @@
 export const getLanguage = (filename: string) => {
   const ext = filename.toLowerCase().split(".").pop();
 
-  console.log("ext", ext);
-
   switch (ext) {
     case "html":
     case "htm": {

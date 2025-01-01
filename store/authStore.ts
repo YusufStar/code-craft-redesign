@@ -2,7 +2,11 @@ import { toast } from "sonner";
 import { create } from "zustand";
 import { User } from "@prisma/client";
 
+import useFileStore from "./fileStore";
+import useEditorStore from "./editorStore";
+
 import { axiosInstance } from "@/hooks/useAxios";
+import { fetchFolders } from "@/actions/fileActions";
 
 interface AuthState {
   currentUser: User | null;
@@ -40,9 +44,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return;
     }
     try {
-      const { data } = await axiosInstance.get("users/me");
+      const { data: currentUser } = await axiosInstance.get("users/me");
+      const folders = await fetchFolders();
+      const {data: editorSettings} = await axiosInstance.get("editor-settings");
 
-      set({ currentUser: data, loading: false });
+      useFileStore.setState({ folderStructure: folders });
+      useEditorStore.getState().setEditorSettings(editorSettings);
+      set({ currentUser: currentUser, loading: false });
     } catch (error) {
       toast.error(
         "Kullanıcı verileri alınırken bir hata oluştu, lütfen tekrar giriş yapın."

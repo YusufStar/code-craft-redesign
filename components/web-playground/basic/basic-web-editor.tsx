@@ -2,18 +2,20 @@
 import { useState, useRef, useEffect } from "react";
 import { Image } from "@nextui-org/image";
 import { Download, Fullscreen, Settings } from "lucide-react";
-import { EditorProps, type Monaco } from "@monaco-editor/react";
-import { AnimatePresence, motion } from "framer-motion";
+import { type Monaco } from "@monaco-editor/react";
+import { AnimatePresence, m, motion } from "framer-motion";
 import { saveAs } from "file-saver";
 import JSZip from "jszip";
 import { shikiToMonaco } from "@shikijs/monaco";
-import { getHighlighter } from "shiki/bundle/web";
-import { editor } from "monaco-editor";
 import { Skeleton } from "@nextui-org/skeleton";
 import dynamic from "next/dynamic";
 
 import { languageIcons } from "@/constants/icons";
 import EditorSettings from "@/components/editors/EditorSettings";
+import useEditorStore from "@/store/editorStore";
+import useMounted from "@/hooks/useMounted";
+import { Modal, ModalContent, ModalHeader } from "@nextui-org/modal";
+import { Button } from "@nextui-org/button";
 
 const generateRandomWidth = () => `${Math.floor(Math.random() * 75) + 25}%`;
 
@@ -32,43 +34,11 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
   ),
 });
 
-const editorOptions: EditorProps["options"] = {
-  automaticLayout: true,
-  fontSize: 14,
-  minimap: { enabled: false },
-  padding: { top: 12, bottom: 12 },
-  scrollBeyondLastLine: false,
-  scrollbar: { vertical: "hidden", horizontal: "hidden" },
-  wordWrap: "on",
-  folding: true,
-  lineNumbers: "on" as editor.LineNumbersType,
-  roundedSelection: false,
-  renderWhitespace: "none",
-  renderLineHighlight: "line",
-  autoClosingBrackets: "always",
-  autoClosingOvertype: "always",
-  autoClosingQuotes: "always",
-  autoIndent: "full",
-  autoClosingComments: "always",
-  autoClosingDelete: "always",
-  cursorBlinking: "solid",
-  quickSuggestions: true,
-  acceptSuggestionOnEnter: "off",
-  contextmenu: false,
-  occurrencesHighlight: "multiFile",
-  selectionHighlight: true,
-  codeLens: false,
-  renderControlCharacters: true,
-  hideCursorInOverviewRuler: true,
-  overviewRulerBorder: true,
-  overviewRulerLanes: 0,
-  formatOnPaste: true,
-  formatOnType: false,
-};
-
 const BasicWebEditor = () => {
+  const { getEditorSettings } = useEditorStore();
   const [settingsModal, setSettingsModal] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [loadEditorModal, setLoadEditorModal] = useState(true);
   const htmlEditorRef = useRef<HTMLDivElement>(null);
   const jsEditorRef = useRef<HTMLDivElement>(null);
   const cssEditorRef = useRef<HTMLDivElement>(null);
@@ -79,25 +49,90 @@ const BasicWebEditor = () => {
   const jsMonacoRef = useRef<any>(null);
   const cssMonacoRef = useRef<any>(null);
   const [formattedIframe, setFormattedIframe] = useState("");
-  const monacoRef = useRef<Monaco | null>(null);
+  const htmlMonacoRefInstance = useRef<Monaco | null>(null);
+  const jsMonacoRefInstance = useRef<Monaco | null>(null);
+  const cssMonacoRefInstance = useRef<Monaco | null>(null);
+  const { highlighter } = useEditorStore();
+  const shikiLoadedHtml = useRef(false);
+  const shikiLoadedJs = useRef(false);
+  const shikiLoadedCss = useRef(false);
 
   const handleSettings = () => {
     setSettingsModal(true);
   };
 
-  const handleDownload = async () => {
+  const handleDownload = async (type: "html" | "css" | "javascript") => {
     const zip = new JSZip();
-
-    zip.file("index.html", htmlMonacoRef.current?.getValue() || "");
-    zip.file("style.css", cssMonacoRef.current?.getValue() || "");
-    zip.file("script.js", jsMonacoRef.current?.getValue() || "");
-
-    const content = await zip.generateAsync({ type: "blob" });
-
-    saveAs(content, "web-editor-project.zip");
+    let content;
+    if (type === "html") {
+      zip.file("index.html", htmlMonacoRef.current?.getValue() || "");
+      content = await zip.generateAsync({ type: "blob" });
+      saveAs(content, "index.html.zip");
+    } else if (type === "css") {
+      zip.file("style.css", cssMonacoRef.current?.getValue() || "");
+      content = await zip.generateAsync({ type: "blob" });
+      saveAs(content, "style.css.zip");
+    } else if (type === "javascript") {
+      zip.file("script.js", jsMonacoRef.current?.getValue() || "");
+      content = await zip.generateAsync({ type: "blob" });
+      saveAs(content, "script.js.zip");
+    }
   };
 
-  const handleEditorDidMount = (editor: any) => {
+  useEffect(() => {
+    const loadShiki = async () => {
+      if (
+        htmlMonacoRefInstance.current &&
+        !shikiLoadedHtml.current &&
+        highlighter
+      ) {
+        shikiToMonaco(highlighter, htmlMonacoRefInstance.current);
+        shikiLoadedHtml.current = true;
+      }
+      if (
+        jsMonacoRefInstance.current &&
+        !shikiLoadedJs.current &&
+        highlighter
+      ) {
+        shikiToMonaco(highlighter, jsMonacoRefInstance.current);
+        shikiLoadedJs.current = true;
+      }
+      if (
+        cssMonacoRefInstance.current &&
+        !shikiLoadedCss.current &&
+        highlighter
+      ) {
+        shikiToMonaco(highlighter, cssMonacoRefInstance.current);
+        shikiLoadedCss.current = true;
+      }
+    };
+
+    loadShiki();
+  }, [
+    htmlMonacoRefInstance.current,
+    shikiLoadedHtml.current,
+    jsMonacoRefInstance.current,
+    shikiLoadedJs.current,
+    cssMonacoRefInstance.current,
+    shikiLoadedCss.current,
+    highlighter,
+  ]);
+
+  const handleEditorDidMount = (
+    editor: any,
+    monaco: any,
+    type: "html" | "css" | "javascript"
+  ) => {
+    if (type === "html") {
+      htmlMonacoRef.current = editor;
+      htmlMonacoRefInstance.current = monaco;
+    } else if (type === "css") {
+      cssMonacoRef.current = editor;
+      cssMonacoRefInstance.current = monaco;
+    } else if (type === "javascript") {
+      jsMonacoRef.current = editor;
+      jsMonacoRefInstance.current = monaco;
+    }
     editor.getModel()?.setEOL(0);
 
     requestAnimationFrame(() => {
@@ -163,6 +198,28 @@ const BasicWebEditor = () => {
     <div className="h-full flex flex-col">
       <EditorSettings open={settingsModal} onOpenChange={setSettingsModal} />
 
+      <Modal backdrop="blur" isOpen={loadEditorModal} onOpenChange={setLoadEditorModal}>
+        <ModalHeader className="flex flex-col gap-1">
+          Basic Web Editor
+        </ModalHeader>
+        <ModalContent>
+          {(onClose) => (
+            <div className="p-6 bg-background rounded-lg shadow-lg max-w-md mx-auto">
+              <h1 className="text-2xl font-extrabold text-white/100 mb-4">
+                Web Editor Pro
+              </h1>
+              <p className="text-white/50 leading-relaxed mb-6">
+                Seamlessly edit and preview your HTML, CSS, and JavaScript in
+                one place. Elevate your web development experience.
+              </p>
+              <Button fullWidth variant="bordered" color="success" onClick={onClose}>
+                Start Coding
+              </Button>
+            </div>
+          )}
+        </ModalContent>
+      </Modal>
+
       <div className="flex items-center justify-between px-4 h-10 border-b border-white/10">
         <div className="flex items-center gap-2">
           <div className="flex items-center space-x-2">
@@ -200,7 +257,7 @@ const BasicWebEditor = () => {
           <button
             className="p-1.5 hover:bg-gray-700 rounded-md transition-colors"
             title="Download File"
-            onClick={handleDownload}
+            onClick={() => handleDownload("html")}
           >
             <Download className="w-4 h-4 text-gray-400" />
           </button>
@@ -291,7 +348,7 @@ const BasicWebEditor = () => {
               <button
                 className="p-1.5 hover:bg-gray-700 rounded-md transition-colors"
                 title="Download File"
-                onClick={handleDownload}
+                onClick={() => handleDownload("html")}
               >
                 <Download className="w-4 h-4 text-gray-400" />
               </button>
@@ -300,37 +357,9 @@ const BasicWebEditor = () => {
           <MonacoEditor
             height={htmlEditorHeight}
             language="html"
-            options={editorOptions}
-            theme="dark-plus"
+            options={getEditorSettings()}
             onMount={(editor, monaco) => {
-              htmlMonacoRef.current = editor;
-              monacoRef.current = monaco;
-              handleEditorDidMount(editor);
-              void (async () => {
-                const highlighter = await getHighlighter({
-                  themes: ["dark-plus"],
-                  langs: ["html"],
-                });
-
-                shikiToMonaco(highlighter, monacoRef.current);
-              })();
-              editor.onDidChangeModelContent(() => {
-                setFormattedIframe(`
-                  <html>
-                    <head>
-                      <style>
-                        ${cssMonacoRef.current?.getValue() || ""}
-                      </style>
-                    </head>
-                    <body>
-                      ${htmlMonacoRef.current?.getValue() || ""}
-                      <script>
-                        ${jsMonacoRef.current?.getValue() || ""}
-                      </script>
-                    </body>
-                  </html>
-                `);
-              });
+              handleEditorDidMount(editor, monaco, "html");
             }}
           />
         </div>
@@ -363,7 +392,7 @@ const BasicWebEditor = () => {
               <button
                 className="p-1.5 hover:bg-gray-700 rounded-md transition-colors"
                 title="Download File"
-                onClick={handleDownload}
+                onClick={() => handleDownload("javascript")}
               >
                 <Download className="w-4 h-4 text-gray-400" />
               </button>
@@ -372,37 +401,9 @@ const BasicWebEditor = () => {
           <MonacoEditor
             height={jsEditorHeight}
             language="javascript"
-            options={editorOptions}
-            theme="dark-plus"
+            options={getEditorSettings()}
             onMount={(editor, monaco) => {
-              jsMonacoRef.current = editor;
-              monacoRef.current = monaco;
-              handleEditorDidMount(editor);
-              void (async () => {
-                const highlighter = await getHighlighter({
-                  themes: ["dark-plus"],
-                  langs: ["javascript"],
-                });
-
-                shikiToMonaco(highlighter, monacoRef.current);
-              })();
-              editor.onDidChangeModelContent(() => {
-                setFormattedIframe(`
-                  <html>
-                    <head>
-                      <style>
-                        ${cssMonacoRef.current?.getValue() || ""}
-                      </style>
-                    </head>
-                    <body>
-                      ${htmlMonacoRef.current?.getValue() || ""}
-                      <script>
-                        ${jsMonacoRef.current?.getValue() || ""}
-                      </script>
-                    </body>
-                  </html>
-                `);
-              });
+              handleEditorDidMount(editor, monaco, "javascript");
             }}
           />
         </div>
@@ -435,7 +436,7 @@ const BasicWebEditor = () => {
               <button
                 className="p-1.5 hover:bg-gray-700 rounded-md transition-colors"
                 title="Download File"
-                onClick={handleDownload}
+                onClick={() => handleDownload("css")}
               >
                 <Download className="w-4 h-4 text-gray-400" />
               </button>
@@ -444,37 +445,9 @@ const BasicWebEditor = () => {
           <MonacoEditor
             height={cssEditorHeight}
             language="css"
-            options={editorOptions}
-            theme="dark-plus"
+            options={getEditorSettings()}
             onMount={(editor, monaco) => {
-              cssMonacoRef.current = editor;
-              monacoRef.current = monaco;
-              handleEditorDidMount(editor);
-              void (async () => {
-                const highlighter = await getHighlighter({
-                  themes: ["dark-plus"],
-                  langs: ["css"],
-                });
-
-                shikiToMonaco(highlighter, monacoRef.current);
-              })();
-              editor.onDidChangeModelContent(() => {
-                setFormattedIframe(`
-                  <html>
-                    <head>
-                      <style>
-                        ${cssMonacoRef.current?.getValue() || ""}
-                      </style>
-                    </head>
-                    <body>
-                      ${htmlMonacoRef.current?.getValue() || ""}
-                      <script>
-                        ${jsMonacoRef.current?.getValue() || ""}
-                      </script>
-                    </body>
-                  </html>
-                `);
-              });
+              handleEditorDidMount(editor, monaco, "css");
             }}
           />
         </div>

@@ -10,29 +10,69 @@ import {
 import { Button } from "@nextui-org/button";
 import { Slider } from "@nextui-org/slider";
 import { Input } from "@nextui-org/input";
-import { Select, SelectSection, SelectItem } from "@nextui-org/select";
-import { Avatar } from "@nextui-org/react";
+import { Select, SelectItem } from "@nextui-org/select";
 import { toast } from "sonner";
+import { Checkbox } from "@nextui-org/checkbox";
 
-import { languageIcons } from "@/constants/icons";
 import useEditorStore from "@/store/editorStore";
+import { axiosInstance } from "@/hooks/useAxios";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
+export const themes: string[] = [
+  "aurora-x",
+  "ayu-dark",
+  "catppuccin-frappe",
+  "catppuccin-latte",
+  "catppuccin-macchiato",
+  "catppuccin-mocha",
+  "dark-plus",
+  "dracula",
+  "dracula-soft",
+  "github-dark",
+  "material-theme",
+  "material-theme-darker",
+  "material-theme-ocean",
+  "monokai",
+  "one-dark-pro",
+  "solarized-dark",
+  "vitesse-black",
+  "vitesse-dark",
+];
+
 const EditorSettings = ({ onOpenChange, open }: Props) => {
   const { editorSettings, setEditorSettings } = useEditorStore();
+  const [tempSettings, setTempSettings] = React.useState(editorSettings);
+  const [isLoading, setIsLoading] = React.useState(false);
 
-  const handleChangeSetting = (key: string, value: any) => {
-    setEditorSettings({ [key]: value });
+  React.useEffect(() => {
+    setTempSettings(editorSettings);
+  }, [editorSettings]);
+
+  const handleSaveSettings = async (onClose: () => void) => {
+    setIsLoading(true);
+    try {
+      const { data } = await axiosInstance.put(
+        "/editor-settings",
+        tempSettings
+      );
+
+      setEditorSettings(data);
+      toast.success("Settings saved successfully.");
+      onClose();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Error saving settings.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSaveSettings = (onClose: () => void) => {
-    toast.success("Settings saved successfully.");
-    onClose();
-  };
+  const isSaveDisabled = React.useMemo(() => {
+    return JSON.stringify(tempSettings) === JSON.stringify(editorSettings);
+  }, [tempSettings, editorSettings]);
 
   return (
     <Modal isOpen={open} onOpenChange={onOpenChange}>
@@ -53,9 +93,12 @@ const EditorSettings = ({ onOpenChange, open }: Props) => {
                     min={10}
                     size="sm"
                     type="number"
-                    value={editorSettings.fontSize.toString()}
+                    value={tempSettings.fontSize.toString()}
                     onChange={(e) =>
-                      handleChangeSetting("fontSize", e.target.value)
+                      setTempSettings({
+                        ...tempSettings,
+                        fontSize: parseInt(e.target.value),
+                      })
                     }
                   />
                 </div>
@@ -64,42 +107,49 @@ const EditorSettings = ({ onOpenChange, open }: Props) => {
                   minValue={10}
                   size="sm"
                   step={0.5}
-                  value={editorSettings.fontSize}
+                  value={tempSettings.fontSize}
                   onChange={(value) =>
-                    handleChangeSetting("fontSize", value as number)
+                    setTempSettings({
+                      ...tempSettings,
+                      fontSize: value as number,
+                    })
                   }
                 />
               </div>
 
-              {/* Settings content - Editor Language */}
-              <Select
-                className="w-full"
-                label="Select Language"
-                placeholder="Editor Language"
-                size="md"
-                value={editorSettings.language}
-                onChange={(value) =>
-                  handleChangeSetting("language", value.currentKey)
-                }
-              >
-                <SelectSection>
-                  {Object.keys(languageIcons).map((lang) => (
-                    <SelectItem
-                      key={lang}
-                      startContent={
-                        <Avatar
-                          alt={lang}
-                          className="w-6 h-6"
-                          src={languageIcons[lang]}
-                        />
-                      }
-                      value={lang}
-                    >
-                      {lang}
-                    </SelectItem>
-                  ))}
-                </SelectSection>
-              </Select>
+              {/* Settings content - Tab Size */}
+              <div className="flex flex-col gap-2 mt-4">
+                <div className="flex items-center justify-between">
+                  <span>Tab Size</span>
+                  <Input
+                    className="w-16"
+                    max={8}
+                    min={1}
+                    size="sm"
+                    type="number"
+                    value={tempSettings.tabSize.toString()}
+                    onChange={(e) =>
+                      setTempSettings({
+                        ...tempSettings,
+                        tabSize: parseInt(e.target.value),
+                      })
+                    }
+                  />
+                </div>
+                <Slider
+                  maxValue={8}
+                  minValue={1}
+                  size="sm"
+                  step={1}
+                  value={tempSettings.tabSize}
+                  onChange={(value) =>
+                    setTempSettings({
+                      ...tempSettings,
+                      tabSize: value as number,
+                    })
+                  }
+                />
+              </div>
 
               {/* Settings content - Editor Theme */}
               <Select
@@ -107,16 +157,68 @@ const EditorSettings = ({ onOpenChange, open }: Props) => {
                 label="Select Theme"
                 placeholder="Editor Theme"
                 size="md"
-                value={editorSettings.theme}
+                value={tempSettings.theme}
                 onChange={(value) =>
-                  handleChangeSetting("theme", value.currentKey)
+                  setTempSettings({
+                    ...tempSettings,
+                    theme: value.target.value,
+                  })
                 }
               >
-                <SelectSection>
-                  <SelectItem value="dark-plus">Dark</SelectItem>
-                  <SelectItem value="vs-light">Light</SelectItem>
-                </SelectSection>
+                {themes.map((theme) => (
+                  <SelectItem key={theme} className="capitalize" value={theme}>
+                    {theme.replace(/-/g, " ")}
+                  </SelectItem>
+                ))}
               </Select>
+
+              {/* Settings content - Word Wrap */}
+              <div className="flex items-center gap-2 mt-4">
+                <Checkbox
+                  isSelected={tempSettings.wordWrap}
+                  onValueChange={(value) =>
+                    setTempSettings({ ...tempSettings, wordWrap: value })
+                  }
+                >
+                  Word Wrap
+                </Checkbox>
+              </div>
+
+              {/* Settings content - Auto Save */}
+              <div className="flex items-center gap-2 mt-4">
+                <Checkbox
+                  isSelected={tempSettings.autoSave}
+                  onValueChange={(value) =>
+                    setTempSettings({ ...tempSettings, autoSave: value })
+                  }
+                >
+                  Auto Save
+                </Checkbox>
+              </div>
+
+              {/* Settings content - Line Numbers */}
+              <div className="flex items-center gap-2 mt-4">
+                <Checkbox
+                  isSelected={tempSettings.lineNumbers}
+                  onValueChange={(value) =>
+                    setTempSettings({ ...tempSettings, lineNumbers: value })
+                  }
+                >
+                  Line Numbers
+                </Checkbox>
+              </div>
+
+              {/* Settings content - Minimap */}
+              <div className="flex items-center gap-2 mt-4">
+                <Checkbox
+                  isSelected={tempSettings.minimap}
+                  onValueChange={(value) =>
+                    setTempSettings({ ...tempSettings, minimap: value })
+                  }
+                >
+                  Minimap
+                </Checkbox>
+              </div>
             </ModalBody>
             <ModalFooter>
               <Button
@@ -129,6 +231,8 @@ const EditorSettings = ({ onOpenChange, open }: Props) => {
               </Button>
               <Button
                 color="primary"
+                isDisabled={isSaveDisabled || isLoading}
+                isLoading={isLoading}
                 size="sm"
                 onPress={() => handleSaveSettings(onClose)}
               >

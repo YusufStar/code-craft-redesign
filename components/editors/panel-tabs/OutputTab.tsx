@@ -1,7 +1,8 @@
 "use client";
 
 import { ScrollShadow } from "@nextui-org/react";
-import { AlertTriangle, CheckCircle, Clock, Loader2 } from "lucide-react";
+import { AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
+
 import useEditorStore from "@/store/editorStore";
 
 export default function OutputTab() {
@@ -25,7 +26,9 @@ export default function OutputTab() {
                 <span className="font-medium text-lg">Error:</span>
               </div>
 
-              <pre className="whitespace-pre-wrap mt-3 bg-red-900/20 border border-white/10 p-3 rounded-lg text-sm font-mono">{output.error}</pre>
+              <pre className="whitespace-pre-wrap mt-3 bg-red-900/20 border border-white/10 p-3 rounded-lg text-sm font-mono">
+                {output.error}
+              </pre>
             </div>
           )}
 
@@ -33,7 +36,9 @@ export default function OutputTab() {
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-emerald-400">
                 <CheckCircle className="w-6 h-6" />
-                <span className="font-medium text-lg">Execution Successful</span>
+                <span className="font-medium text-lg">
+                  Execution Successful
+                </span>
               </div>
 
               <pre className="whitespace-pre-wrap bg-gray-900/30 border border-white/10 p-3 rounded-lg text-sm text-gray-300 font-mono">

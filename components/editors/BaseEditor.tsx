@@ -5,19 +5,18 @@ import dynamic from "next/dynamic";
 import { Download, Copy, Settings, X, Share, Check } from "lucide-react";
 import { Image } from "@nextui-org/image";
 import { toast } from "sonner";
-import { EditorProps, Monaco } from "@monaco-editor/react";
-import { editor } from "monaco-editor";
+import { Monaco } from "@monaco-editor/react";
 import { shikiToMonaco } from "@shikijs/monaco/index.mjs";
-import { bundledLanguages, getHighlighter } from "shiki/bundle/web";
 
-import EditorSettings from "./EditorSettings";
 import ShareSnippet from "./ShareSnippet";
+import EditorSettings from "./EditorSettings";
 
 import useMounted from "@/hooks/useMounted";
 import { fileToLang, languageIcons } from "@/constants/icons";
 import useFileStore from "@/store/fileStore";
 import { getLanguage } from "@/modules/monaco-editor";
 import { updateFileContent } from "@/actions/fileActions";
+import useEditorStore from "@/store/editorStore";
 
 const generateRandomWidth = () => `${Math.floor(Math.random() * 75) + 25}%`;
 
@@ -37,6 +36,7 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
 });
 
 const BaseEditor = memo(() => {
+  const { getEditorSettings, highlighter } = useEditorStore();
   const mounted = useMounted();
   const [copied, setCopied] = useState(false);
   const [editorInstance, setEditorInstance] = useState<any>(null);
@@ -54,6 +54,7 @@ const BaseEditor = memo(() => {
   } = useFileStore();
 
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const shikiLoaded = useRef(false);
 
   const getFileName = (id: string) => {
     const files = getFiles();
@@ -130,39 +131,15 @@ const BaseEditor = memo(() => {
     };
   }, []);
 
-  const editorOptions: EditorProps["options"] = {
-    automaticLayout: true,
-    fontSize: 14,
-    minimap: { enabled: false },
-    padding: { top: 12, bottom: 12 },
-    scrollBeyondLastLine: false,
-    scrollbar: { vertical: "hidden", horizontal: "hidden" },
-    wordWrap: "on",
-    folding: true,
-    lineNumbers: "on" as editor.LineNumbersType,
-    roundedSelection: false,
-    renderWhitespace: "none",
-    renderLineHighlight: "line",
-    cursorBlinking: "solid",
-    quickSuggestions: true,
-    acceptSuggestionOnEnter: "off",
-    contextmenu: false,
-    autoClosingBrackets: "always",
-    autoClosingOvertype: "always",
-    autoClosingQuotes: "always",
-    autoIndent: "full",
-    autoClosingComments: "always",
-    autoClosingDelete: "always",
-    occurrencesHighlight: "multiFile",
-    selectionHighlight: true,
-    codeLens: false,
-    renderControlCharacters: true,
-    hideCursorInOverviewRuler: true,
-    overviewRulerBorder: true,
-    overviewRulerLanes: 0,
-    formatOnPaste: true,
-    formatOnType: false,
-  };
+  useEffect(() => {
+    const loadShiki = async () => {
+      if (monacoRef.current && !shikiLoaded.current && highlighter) {
+        shikiToMonaco(highlighter, monacoRef.current);
+      }
+    };
+
+    loadShiki();
+  }, [monacoRef.current, shikiLoaded.current, highlighter]);
 
   const handleEditorDidMount = (editor: any) => {
     setEditorInstance(editor);
@@ -301,20 +278,11 @@ const BaseEditor = memo(() => {
                     ? getLanguage(getFileName(activeFile))
                     : "plaintext"
                 }
-                options={editorOptions}
-                theme="dark-plus"
+                options={getEditorSettings()}
                 onChange={handleEditorChange}
                 onMount={(editor, monaco) => {
                   monacoRef.current = monaco;
                   handleEditorDidMount(editor);
-                  void (async () => {
-                    const highlighter = await getHighlighter({
-                      themes: ["dark-plus"],
-                      langs: Object.keys(bundledLanguages),
-                    });
-
-                    shikiToMonaco(highlighter, monacoRef.current);
-                  })();
                 }}
               />
             )}
