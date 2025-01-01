@@ -158,6 +158,7 @@ const EditorSettings = ({ onOpenChange, open }: Props) => {
                 placeholder="Editor Theme"
                 size="md"
                 value={tempSettings.theme}
+                selectedKeys={[tempSettings.theme]}
                 onChange={(value) =>
                   setTempSettings({
                     ...tempSettings,

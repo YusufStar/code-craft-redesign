@@ -1,7 +1,7 @@
 import React from "react";
 import { Metadata } from "next";
 
-import WebPlayground from "@/components/web-playground/web-playground";
+import ComplexWebEditor from "@/components/web-playground/complex/complex-web-editor";
 
 export const metadata: Metadata = {
   title:
@@ -30,7 +30,7 @@ const page = async () => {
   return (
     <div className="h-full w-full p-4 relative">
       <div className="h-full w-full rounded-xl border border-white/10 bg-[#0A0A0C]/80 backdrop-blur-xl backdrop-saturate-200 shadow-2xl">
-        <WebPlayground />
+        <ComplexWebEditor />
       </div>
     </div>
   );

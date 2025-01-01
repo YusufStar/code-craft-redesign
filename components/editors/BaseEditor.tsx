@@ -2,14 +2,7 @@
 import { memo, useState, useEffect, useRef } from "react";
 import { Skeleton } from "@nextui-org/skeleton";
 import dynamic from "next/dynamic";
-import {
-  Download,
-  Copy,
-  Settings,
-  X,
-  Share,
-  Check,
-} from "lucide-react";
+import { Download, Copy, Settings, X, Share, Check } from "lucide-react";
 import { Image } from "@nextui-org/image";
 import { toast } from "sonner";
 import { Monaco } from "@monaco-editor/react";
@@ -178,6 +171,16 @@ const BaseEditor = memo(() => {
     e.stopPropagation();
     removeOpenFile(file);
   };
+
+  useEffect(() => {
+    const hasVisited = localStorage.getItem("hasVisited");
+    if (!hasVisited) {
+      setStartTourModal(true);
+      localStorage.setItem("hasVisited", "true");
+    } else {
+      setStartTourModal(false);
+    }
+  }, []);
 
   if (!mounted) return;
 

@@ -14,8 +14,8 @@ import NewFunctionModal from "./new-function-modal";
 
 import { languageIcons } from "@/constants/icons";
 import EditorSettings from "@/components/editors/EditorSettings";
-import { convertToMarkerData, Violations } from "@/modules/violations";
 import useEditorStore from "@/store/editorStore";
+import { BundledLanguage } from "shiki/langs";
 
 const generateRandomWidth = () => `${Math.floor(Math.random() * 75) + 25}%`;
 
@@ -59,28 +59,19 @@ const ComplexWebEditor = () => {
   const reactEditorRef = useRef<HTMLDivElement>(null);
   const [newFunctionModal, setNewFunctionModal] = useState(false);
   const [editorHeight, setEditorHeight] = useState(600);
-  const [selectedFunction, setSelectedFunction] = useState<string | null>(null);
-  const [editorValue, setEditorValue] = useState("");
-  const [editorLanguage, setEditorLanguage] = useState("jsx");
+  const [selectedFunction, setSelectedFunction] = useState<string | null>(
+    functions[0].function_name
+  );
+  const [editorValue, setEditorValue] = useState(functions[0].function_code);
+  const [editorLanguage, setEditorLanguage] = useState<BundledLanguage>("javascript");
   const [cssValue, setCssValue] = useState(`body {
     background-color: #1e1e1e;
     color: #d4d4d4;
 }`);
 
-  const [violations, setViolations] = useState<Violations>([]);
   const monacoRef = useRef<Monaco | null>(null);
-  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const { highlighter } = useEditorStore();
   const shikiLoaded = useRef(false);
-
-  useEffect(() => {
-    const markers = convertToMarkerData(violations);
-    const model = editorRef.current?.getModel();
-
-    if (model) {
-      monacoRef.current?.editor.setModelMarkers(model, "Markuplint", markers);
-    }
-  }, [violations]);
 
   useEffect(() => {
     if (reactEditorRef.current) {
@@ -129,7 +120,7 @@ const ComplexWebEditor = () => {
   const handleFunctionSelect = (funcName: string, funcCode: string) => {
     setSelectedFunction(funcName);
     setEditorValue(funcCode);
-    setEditorLanguage("jsx");
+    setEditorLanguage("javascript");
   };
 
   const handleEditorChange = (value: string | undefined) => {
