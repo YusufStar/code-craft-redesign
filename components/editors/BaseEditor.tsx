@@ -2,14 +2,31 @@
 import { memo, useState, useEffect, useRef } from "react";
 import { Skeleton } from "@nextui-org/skeleton";
 import dynamic from "next/dynamic";
-import { Download, Copy, Settings, X, Share, Check } from "lucide-react";
+import {
+  Download,
+  Copy,
+  Settings,
+  X,
+  Share,
+  Check,
+} from "lucide-react";
 import { Image } from "@nextui-org/image";
 import { toast } from "sonner";
 import { Monaco } from "@monaco-editor/react";
 import { shikiToMonaco } from "@shikijs/monaco/index.mjs";
+import {
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+} from "@nextui-org/modal";
+import { Button } from "@nextui-org/button";
+import { AnimatePresence, motion } from "framer-motion";
 
 import ShareSnippet from "./ShareSnippet";
 import EditorSettings from "./EditorSettings";
+import TourModal from "../TourModal";
 
 import useMounted from "@/hooks/useMounted";
 import { fileToLang, languageIcons } from "@/constants/icons";
@@ -36,6 +53,8 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
 });
 
 const BaseEditor = memo(() => {
+  const [startTourModal, setStartTourModal] = useState(true);
+
   const { getEditorSettings, highlighter } = useEditorStore();
   const mounted = useMounted();
   const [copied, setCopied] = useState(false);
@@ -169,6 +188,8 @@ const BaseEditor = memo(() => {
         open={shareSnippetModal}
         onOpenChange={setShareSnippetModal}
       />
+      <TourModal open={startTourModal} onOpenChange={setStartTourModal} />
+
       <div className="flex h-9 items-center border-b border-white/10 overflow-x-auto">
         <div className="flex flex-nowrap whitespace-nowrap">
           {openFiles.length > 0 &&

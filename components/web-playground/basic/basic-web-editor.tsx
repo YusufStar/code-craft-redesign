@@ -1,21 +1,20 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Image } from "@nextui-org/image";
 import { Download, Fullscreen, Settings } from "lucide-react";
 import { type Monaco } from "@monaco-editor/react";
-import { AnimatePresence, m, motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { saveAs } from "file-saver";
 import JSZip from "jszip";
 import { shikiToMonaco } from "@shikijs/monaco";
 import { Skeleton } from "@nextui-org/skeleton";
 import dynamic from "next/dynamic";
+import { Modal, ModalContent, ModalHeader } from "@nextui-org/modal";
+import { Button } from "@nextui-org/button";
 
 import { languageIcons } from "@/constants/icons";
 import EditorSettings from "@/components/editors/EditorSettings";
 import useEditorStore from "@/store/editorStore";
-import useMounted from "@/hooks/useMounted";
-import { Modal, ModalContent, ModalHeader } from "@nextui-org/modal";
-import { Button } from "@nextui-org/button";
 
 const generateRandomWidth = () => `${Math.floor(Math.random() * 75) + 25}%`;
 
@@ -64,6 +63,7 @@ const BasicWebEditor = () => {
   const handleDownload = async (type: "html" | "css" | "javascript") => {
     const zip = new JSZip();
     let content;
+
     if (type === "html") {
       zip.file("index.html", htmlMonacoRef.current?.getValue() || "");
       content = await zip.generateAsync({ type: "blob" });
@@ -162,33 +162,35 @@ const BasicWebEditor = () => {
     };
   }, []);
 
+  const updateIframe = useCallback(() => {
+    if (htmlMonacoRef.current && jsMonacoRef.current && cssMonacoRef.current) {
+      setFormattedIframe(`
+        <html>
+          <head>
+            <style>
+              ${cssMonacoRef.current?.getValue() || ""}
+            </style>
+          </head>
+          <body>
+            ${htmlMonacoRef.current?.getValue() || ""}
+            <script>
+              ${jsMonacoRef.current?.getValue() || ""}
+            </script>
+          </body>
+        </html>
+      `);
+    }
+  }, [htmlMonacoRef, jsMonacoRef, cssMonacoRef]);
+
   useEffect(() => {
     if (htmlMonacoRef.current && jsMonacoRef.current && cssMonacoRef.current) {
-      const updateIframe = () => {
-        setFormattedIframe(`
-          <html>
-            <head>
-              <style>
-                ${cssMonacoRef.current?.getValue() || ""}
-              </style>
-            </head>
-            <body>
-              ${htmlMonacoRef.current?.getValue() || ""}
-              <script>
-                ${jsMonacoRef.current?.getValue() || ""}
-              </script>
-            </body>
-          </html>
-        `);
-      };
-
       htmlMonacoRef.current.onDidChangeModelContent(updateIframe);
       jsMonacoRef.current.onDidChangeModelContent(updateIframe);
       cssMonacoRef.current.onDidChangeModelContent(updateIframe);
 
       updateIframe();
     }
-  }, [htmlMonacoRef, jsMonacoRef, cssMonacoRef]);
+  }, [htmlMonacoRef.current, jsMonacoRef.current, cssMonacoRef.current, updateIframe]);
 
   const toggleFullScreen = () => {
     setIsFullScreen((prevState) => !prevState);
@@ -212,7 +214,7 @@ const BasicWebEditor = () => {
                 Seamlessly edit and preview your HTML, CSS, and JavaScript in
                 one place. Elevate your web development experience.
               </p>
-              <Button fullWidth variant="bordered" color="success" onClick={onClose}>
+              <Button fullWidth color="success" variant="bordered" onClick={onClose}>
                 Start Coding
               </Button>
             </div>

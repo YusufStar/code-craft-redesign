@@ -12,7 +12,6 @@ import {
   DrawerHeader,
 } from "@nextui-org/drawer";
 
-
 import OutputTab from "./panel-tabs/OutputTab";
 import AIChatTab from "./panel-tabs/AIChatTab";
 import CollaborationTab from "./panel-tabs/CollaborationTab";

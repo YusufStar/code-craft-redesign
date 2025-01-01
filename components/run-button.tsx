@@ -19,6 +19,7 @@ import { FileType } from "./MultiFileSelect";
 import useFileStore from "@/store/fileStore";
 import { axiosInstance } from "@/hooks/useAxios";
 import useEditorStore from "@/store/editorStore";
+import { getLanguage } from "@/modules/monaco-editor";
 
 function RunButton({ small }: { small?: boolean }) {
   const [open, setOpen] = useState(false);
@@ -78,7 +79,6 @@ function RunDialog({
   const isPro = false;
   const { getFiles } = useFileStore();
   const files = getFiles();
-  const [selectedLanguage, setSelectedLanguage] = useState("javascript");
   const {
     setOutput,
     setIsRightPanelOpen,
@@ -110,7 +110,7 @@ function RunDialog({
         executionType: states.executionType,
         executionFiles: states.executionFiles,
         runType: states.runType,
-        language: selectedLanguage,
+        language: getLanguage(states.executionFiles[0].name),
       });
 
       setOutput({ logs: [], result: data.result ?? "", error: null });
@@ -318,24 +318,6 @@ function RunDialog({
                   </Select>
                 </motion.div>
               </AnimatePresence>
-
-              <Select
-                label="Language"
-                placeholder="Select a language"
-                size="sm"
-                value={selectedLanguage}
-                onChange={(e) => setSelectedLanguage(e.target.value)}
-              >
-                <SelectSection>
-                  <SelectItem key="javascript" value="javascript">
-                    JavaScript
-                  </SelectItem>
-                  <SelectItem key="python" value="python">
-                    Python
-                  </SelectItem>
-                  {/* Diğer dilleri buraya ekleyin */}
-                </SelectSection>
-              </Select>
             </div>
 
             <ModalFooter>
