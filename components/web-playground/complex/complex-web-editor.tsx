@@ -39,7 +39,7 @@ import { useMonaco } from "@/modules/load-monaco";
 import { getLanguage } from "@/modules/monaco-editor";
 import { FolderType } from "@/store/fileStore";
 import { axiosInstance } from "@/hooks/useAxios";
-import { updateFile, updateFileContent } from "@/actions/reactActions";
+import { updateFile, updateFileContent, updateFolder } from "@/actions/reactActions";
 
 const generateRandomWidth = () => `${Math.floor(Math.random() * 75) + 25}%`;
 
@@ -157,11 +157,19 @@ const FileTreeItem = ({
       const file = findFile(folderStructure, item.id);
 
       if (file && file.path.split("/").length > 2) {
-        await updateFile(
-          projectId,
-          file.path,
-          file.path.replace(item.name ? item.name : "", newName)
-        );
+        if (isFolder) {
+          await updateFolder(
+            projectId,
+            file.path,
+            file.path.replace(item.name ? item.name : "", newName)
+          );
+        } else {
+          await updateFile(
+            projectId,
+            file.path,
+            file.path.replace(item.name ? item.name : "", newName)
+          );
+        }
         await fetchData();
       } else if (file) {
         toast.error("Root folder cannot be renamed");
@@ -225,7 +233,7 @@ const FileTreeItem = ({
           )}
           {isEditing ? (
             <input
-              className="text-gray-300 px-1 focus:outline-none rounded border border-gray-500 bg-gray-700/50"
+              className="text-gray-300 px-1 focus:outline-none rounded border w-3/4 border-gray-500 bg-gray-700/50"
               type="text"
               value={newName}
               onBlur={handleBlur}
