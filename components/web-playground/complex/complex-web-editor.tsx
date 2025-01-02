@@ -2,7 +2,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Image } from "@nextui-org/image";
 import { type Monaco } from "@monaco-editor/react";
-import { shikiToMonaco } from "@shikijs/monaco";
 import { ChevronUp, Info, Play, Plus, Settings, Trash, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Skeleton } from "@nextui-org/skeleton";
@@ -22,6 +21,7 @@ import UnpkgModal, { Package } from "./unpkg-modal";
 import { languageIcons } from "@/constants/icons";
 import EditorSettings from "@/components/editors/EditorSettings";
 import useEditorStore from "@/store/editorStore";
+import { useMonaco } from "@/modules/load-monaco";
 
 const generateRandomWidth = () => `${Math.floor(Math.random() * 75) + 25}%`;
 
@@ -41,6 +41,7 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
 });
 
 const ComplexWebEditor = () => {
+  const { generateMonaco } = useMonaco();
   const { getEditorSettings } = useEditorStore();
   const [settingsModal, setSettingsModal] = useState(false);
   const [functions, setFunctions] = useState<
@@ -81,8 +82,6 @@ const ComplexWebEditor = () => {
   const [pkgDetail, setPkgDetail] = useState<Package | null>(null);
 
   const monacoRef = useRef<Monaco | null>(null);
-  const { highlighter } = useEditorStore();
-  const shikiLoaded = useRef(false);
   const [loadedTypeDefinitions, setLoadedTypeDefinitions] = useState<
     Record<string, boolean>
   >({});
@@ -93,17 +92,6 @@ const ComplexWebEditor = () => {
       setEditorHeight(reactEditorRef.current.clientHeight - 40);
     }
   }, []);
-
-  useEffect(() => {
-    const loadShiki = async () => {
-      if (monacoRef.current && !shikiLoaded.current && highlighter) {
-        shikiToMonaco(highlighter, monacoRef.current);
-        shikiLoaded.current = true;
-      }
-    };
-
-    loadShiki();
-  }, [monacoRef.current, shikiLoaded.current, highlighter]);
 
   useEffect(() => {
     const loadTypeDefinitions = async () => {
@@ -679,75 +667,10 @@ const ComplexWebEditor = () => {
             options={getEditorSettings()}
             value={editorValue}
             onChange={handleEditorChange}
-            onMount={async (editor, monaco) => {
+            onMount={(editor, monaco) => {
+              monacoRef.current = monaco;
               handleEditorDidMount(editor, monaco);
-
-              if (monaco && editorLanguage === "tsx") {
-                monaco.languages.typescript.typescriptDefaults.setCompilerOptions(
-                  {
-                    target: monaco.languages.typescript.ScriptTarget.Latest,
-                    allowNonTsExtensions: true,
-                    moduleResolution:
-                      monaco.languages.typescript.ModuleResolutionKind.NodeJs,
-                    module: monaco.languages.typescript.ModuleKind.CommonJS,
-                    noEmit: true,
-                    esModuleInterop: true,
-                    jsx: monaco.languages.typescript.JsxEmit.React,
-                    reactNamespace: "React",
-                    allowJs: true,
-                  }
-                );
-
-                monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions(
-                  {
-                    noSemanticValidation: false,
-                    noSyntaxValidation: false,
-                  }
-                );
-
-                monaco.languages.typescript.typescriptDefaults.addExtraLib(
-                  `declare module '*.css';`,
-                  "file:///node_modules/@ytypes/extension.d.ts"
-                );
-
-                const packageUrls: any[] = [
-                  {
-                    url: "https://unpkg.com/@types/react@18.2.1/index.d.ts",
-                    name: "react",
-                  },
-                  {
-                    url: "https://unpkg.com/@mantine/core@7.4.1/lib/index.d.ts",
-                    name: "mantine",
-                  },
-                ];
-
-                Promise.all(
-                  packageUrls.map(({ url, name }) =>
-                    fetch(url).then((res) =>
-                      res.text().then((content) => ({
-                        content,
-                        name,
-                      }))
-                    )
-                  )
-                ).then((responses) => {
-                  const libraries = responses.map(({ content, name }) => ({
-                    content,
-                    filePath: `file:///node_modules/@types/${name}/index.d.ts`,
-                  }));
-
-                  monaco.languages.typescript.typescriptDefaults.setExtraLibs(
-                    libraries
-                  );
-                });
-              }
-              const model = monaco.editor.createModel(
-                functions[0].function_code,
-                "typescript",
-                monaco.Uri.file("main.tsx")
-              );
-
-              editor.setModel(model);
+              generateMonaco(monaco);
             }}
           />
         </div>

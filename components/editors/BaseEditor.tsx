@@ -6,20 +6,11 @@ import { Download, Copy, Settings, X, Share, Check } from "lucide-react";
 import { Image } from "@nextui-org/image";
 import { toast } from "sonner";
 import { Monaco } from "@monaco-editor/react";
-import { shikiToMonaco } from "@shikijs/monaco/index.mjs";
-import {
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-} from "@nextui-org/modal";
-import { Button } from "@nextui-org/button";
-import { AnimatePresence, motion } from "framer-motion";
+
+import TourModal from "../TourModal";
 
 import ShareSnippet from "./ShareSnippet";
 import EditorSettings from "./EditorSettings";
-import TourModal from "../TourModal";
 
 import useMounted from "@/hooks/useMounted";
 import { fileToLang, languageIcons } from "@/constants/icons";
@@ -27,6 +18,7 @@ import useFileStore from "@/store/fileStore";
 import { getLanguage } from "@/modules/monaco-editor";
 import { updateFileContent } from "@/actions/fileActions";
 import useEditorStore from "@/store/editorStore";
+import { useMonaco } from "@/modules/load-monaco";
 
 const generateRandomWidth = () => `${Math.floor(Math.random() * 75) + 25}%`;
 
@@ -46,9 +38,10 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
 });
 
 const BaseEditor = memo(() => {
+  const { generateMonaco } = useMonaco();
   const [startTourModal, setStartTourModal] = useState(true);
 
-  const { getEditorSettings, highlighter } = useEditorStore();
+  const { getEditorSettings } = useEditorStore();
   const mounted = useMounted();
   const [copied, setCopied] = useState(false);
   const [editorInstance, setEditorInstance] = useState<any>(null);
@@ -66,7 +59,6 @@ const BaseEditor = memo(() => {
   } = useFileStore();
 
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const shikiLoaded = useRef(false);
 
   const getFileName = (id: string) => {
     const files = getFiles();
@@ -143,16 +135,6 @@ const BaseEditor = memo(() => {
     };
   }, []);
 
-  useEffect(() => {
-    const loadShiki = async () => {
-      if (monacoRef.current && !shikiLoaded.current && highlighter) {
-        shikiToMonaco(highlighter, monacoRef.current);
-      }
-    };
-
-    loadShiki();
-  }, [monacoRef.current, shikiLoaded.current, highlighter]);
-
   const handleEditorDidMount = (editor: any) => {
     setEditorInstance(editor);
     editor.getModel()?.setEOL(0);
@@ -174,6 +156,7 @@ const BaseEditor = memo(() => {
 
   useEffect(() => {
     const hasVisited = localStorage.getItem("hasVisited");
+
     if (!hasVisited) {
       setStartTourModal(true);
       localStorage.setItem("hasVisited", "true");
@@ -291,10 +274,8 @@ const BaseEditor = memo(() => {
           <div className="flex-1">
             {mounted && (
               <MonacoEditor
-                key={`editor-${"javascript"}`}
-                className={`w-full h-full ${
-                  monacoRef.current ? "block" : "hidden"
-                } overflow-hidden`}
+                key={`editor-base`}
+                className={`w-full h-full overflow-hidden`}
                 height="100%"
                 keepCurrentModel={false}
                 language={
@@ -307,6 +288,7 @@ const BaseEditor = memo(() => {
                 onMount={(editor, monaco) => {
                   monacoRef.current = monaco;
                   handleEditorDidMount(editor);
+                  generateMonaco(monaco);
                 }}
               />
             )}

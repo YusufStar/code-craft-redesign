@@ -13,6 +13,7 @@ import { Input } from "@nextui-org/input";
 import { Select, SelectItem } from "@nextui-org/select";
 import { toast } from "sonner";
 import { Checkbox } from "@nextui-org/checkbox";
+import themeList from "monaco-themes/themes/themelist.json";
 
 import useEditorStore from "@/store/editorStore";
 import { axiosInstance } from "@/hooks/useAxios";
@@ -21,27 +22,6 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
-
-export const themes: string[] = [
-  "aurora-x",
-  "ayu-dark",
-  "catppuccin-frappe",
-  "catppuccin-latte",
-  "catppuccin-macchiato",
-  "catppuccin-mocha",
-  "dark-plus",
-  "dracula",
-  "dracula-soft",
-  "github-dark",
-  "material-theme",
-  "material-theme-darker",
-  "material-theme-ocean",
-  "monokai",
-  "one-dark-pro",
-  "solarized-dark",
-  "vitesse-black",
-  "vitesse-dark",
-];
 
 const EditorSettings = ({ onOpenChange, open }: Props) => {
   const { editorSettings, setEditorSettings } = useEditorStore();
@@ -166,9 +146,9 @@ const EditorSettings = ({ onOpenChange, open }: Props) => {
                   })
                 }
               >
-                {themes.map((theme) => (
+                {Object.entries(themeList).map(([theme, title]) => (
                   <SelectItem key={theme} className="capitalize" value={theme}>
-                    {theme.replace(/-/g, " ")}
+                    {title}
                   </SelectItem>
                 ))}
               </Select>

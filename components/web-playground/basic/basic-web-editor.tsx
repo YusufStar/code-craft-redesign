@@ -6,7 +6,6 @@ import { type Monaco } from "@monaco-editor/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { saveAs } from "file-saver";
 import JSZip from "jszip";
-import { shikiToMonaco } from "@shikijs/monaco";
 import { Skeleton } from "@nextui-org/skeleton";
 import dynamic from "next/dynamic";
 import { Modal, ModalContent, ModalHeader } from "@nextui-org/modal";
@@ -15,6 +14,7 @@ import { Button } from "@nextui-org/button";
 import { languageIcons } from "@/constants/icons";
 import EditorSettings from "@/components/editors/EditorSettings";
 import useEditorStore from "@/store/editorStore";
+import { useMonaco } from "@/modules/load-monaco";
 
 const generateRandomWidth = () => `${Math.floor(Math.random() * 75) + 25}%`;
 
@@ -34,6 +34,7 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
 });
 
 const BasicWebEditor = () => {
+  const { generateMonaco } = useMonaco();
   const { getEditorSettings } = useEditorStore();
   const [settingsModal, setSettingsModal] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -51,10 +52,6 @@ const BasicWebEditor = () => {
   const htmlMonacoRefInstance = useRef<Monaco | null>(null);
   const jsMonacoRefInstance = useRef<Monaco | null>(null);
   const cssMonacoRefInstance = useRef<Monaco | null>(null);
-  const { highlighter } = useEditorStore();
-  const shikiLoadedHtml = useRef(false);
-  const shikiLoadedJs = useRef(false);
-  const shikiLoadedCss = useRef(false);
 
   const handleSettings = () => {
     setSettingsModal(true);
@@ -78,45 +75,6 @@ const BasicWebEditor = () => {
       saveAs(content, "script.js.zip");
     }
   };
-
-  useEffect(() => {
-    const loadShiki = async () => {
-      if (
-        htmlMonacoRefInstance.current &&
-        !shikiLoadedHtml.current &&
-        highlighter
-      ) {
-        shikiToMonaco(highlighter, htmlMonacoRefInstance.current);
-        shikiLoadedHtml.current = true;
-      }
-      if (
-        jsMonacoRefInstance.current &&
-        !shikiLoadedJs.current &&
-        highlighter
-      ) {
-        shikiToMonaco(highlighter, jsMonacoRefInstance.current);
-        shikiLoadedJs.current = true;
-      }
-      if (
-        cssMonacoRefInstance.current &&
-        !shikiLoadedCss.current &&
-        highlighter
-      ) {
-        shikiToMonaco(highlighter, cssMonacoRefInstance.current);
-        shikiLoadedCss.current = true;
-      }
-    };
-
-    loadShiki();
-  }, [
-    htmlMonacoRefInstance.current,
-    shikiLoadedHtml.current,
-    jsMonacoRefInstance.current,
-    shikiLoadedJs.current,
-    cssMonacoRefInstance.current,
-    shikiLoadedCss.current,
-    highlighter,
-  ]);
 
   const handleEditorDidMount = (
     editor: any,
@@ -190,7 +148,12 @@ const BasicWebEditor = () => {
 
       updateIframe();
     }
-  }, [htmlMonacoRef.current, jsMonacoRef.current, cssMonacoRef.current, updateIframe]);
+  }, [
+    htmlMonacoRef.current,
+    jsMonacoRef.current,
+    cssMonacoRef.current,
+    updateIframe,
+  ]);
 
   const toggleFullScreen = () => {
     setIsFullScreen((prevState) => !prevState);
@@ -200,7 +163,11 @@ const BasicWebEditor = () => {
     <div className="h-full flex flex-col">
       <EditorSettings open={settingsModal} onOpenChange={setSettingsModal} />
 
-      <Modal backdrop="blur" isOpen={loadEditorModal} onOpenChange={setLoadEditorModal}>
+      <Modal
+        backdrop="blur"
+        isOpen={loadEditorModal}
+        onOpenChange={setLoadEditorModal}
+      >
         <ModalHeader className="flex flex-col gap-1">
           Basic Web Editor
         </ModalHeader>
@@ -214,7 +181,12 @@ const BasicWebEditor = () => {
                 Seamlessly edit and preview your HTML, CSS, and JavaScript in
                 one place. Elevate your web development experience.
               </p>
-              <Button fullWidth color="success" variant="bordered" onClick={onClose}>
+              <Button
+                fullWidth
+                color="success"
+                variant="bordered"
+                onClick={onClose}
+              >
                 Start Coding
               </Button>
             </div>
@@ -362,6 +334,7 @@ const BasicWebEditor = () => {
             options={getEditorSettings()}
             onMount={(editor, monaco) => {
               handleEditorDidMount(editor, monaco, "html");
+              generateMonaco(monaco);
             }}
           />
         </div>
@@ -406,6 +379,7 @@ const BasicWebEditor = () => {
             options={getEditorSettings()}
             onMount={(editor, monaco) => {
               handleEditorDidMount(editor, monaco, "javascript");
+              generateMonaco(monaco);
             }}
           />
         </div>
@@ -450,6 +424,7 @@ const BasicWebEditor = () => {
             options={getEditorSettings()}
             onMount={(editor, monaco) => {
               handleEditorDidMount(editor, monaco, "css");
+              generateMonaco(monaco);
             }}
           />
         </div>
