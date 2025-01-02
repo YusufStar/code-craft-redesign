@@ -18,8 +18,8 @@ import { Link } from "@nextui-org/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 
-import RunButton from "./run-button";
 import NavbarUserButton from "./navbar-user-button";
+import RunButton from "./editors/run-button";
 
 export const Navbar = () => {
   const pathname = usePathname();
@@ -50,9 +50,9 @@ export const Navbar = () => {
       label: "React Editor",
       icon: () => (
         <svg
-          xmlns="http://www.w3.org/2000/svg"
           className="w-4 h-4 text-gray-400 group-hover:text-gray-200 transition-colors duration-200"
           viewBox="0 0 128 128"
+          xmlns="http://www.w3.org/2000/svg"
         >
           <g fill="#61DAFB">
             <circle cx="64" cy="64" r="11.4" />

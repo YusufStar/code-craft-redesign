@@ -1,21 +1,27 @@
 "use client";
-import type { editor } from "monaco-editor";
-
 import { useState, useRef, useEffect } from "react";
 import { Image } from "@nextui-org/image";
 import { type Monaco } from "@monaco-editor/react";
 import { shikiToMonaco } from "@shikijs/monaco";
-import { Play, Plus, Settings, Trash, X } from "lucide-react";
+import { ChevronUp, Info, Play, Plus, Settings, Trash, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Skeleton } from "@nextui-org/skeleton";
 import dynamic from "next/dynamic";
+import { BundledLanguage } from "shiki/langs";
+import {
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+} from "@nextui-org/modal";
 
 import NewFunctionModal from "./new-function-modal";
+import UnpkgModal, { Package } from "./unpkg-modal";
 
 import { languageIcons } from "@/constants/icons";
 import EditorSettings from "@/components/editors/EditorSettings";
 import useEditorStore from "@/store/editorStore";
-import { BundledLanguage } from "shiki/langs";
 
 const generateRandomWidth = () => `${Math.floor(Math.random() * 75) + 25}%`;
 
@@ -63,15 +69,24 @@ const ComplexWebEditor = () => {
     functions[0].function_name
   );
   const [editorValue, setEditorValue] = useState(functions[0].function_code);
-  const [editorLanguage, setEditorLanguage] = useState<BundledLanguage>("javascript");
+  const [editorLanguage, setEditorLanguage] = useState<BundledLanguage>("tsx");
   const [cssValue, setCssValue] = useState(`body {
     background-color: #1e1e1e;
     color: #d4d4d4;
 }`);
 
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [unpkgModal, setUnpkgModal] = useState(false);
+  const [pkgDetailModal, setPkgDetailModal] = useState(false);
+  const [pkgDetail, setPkgDetail] = useState<Package | null>(null);
+
   const monacoRef = useRef<Monaco | null>(null);
   const { highlighter } = useEditorStore();
   const shikiLoaded = useRef(false);
+  const [loadedTypeDefinitions, setLoadedTypeDefinitions] = useState<
+    Record<string, boolean>
+  >({});
+  const [monacoKey, setMonacoKey] = useState(0);
 
   useEffect(() => {
     if (reactEditorRef.current) {
@@ -89,6 +104,42 @@ const ComplexWebEditor = () => {
 
     loadShiki();
   }, [monacoRef.current, shikiLoaded.current, highlighter]);
+
+  useEffect(() => {
+    const loadTypeDefinitions = async () => {
+      if (!monacoRef.current) return;
+
+      for (const pkg of packages) {
+        if (loadedTypeDefinitions[pkg.name]) continue;
+        try {
+          const response = await fetch(
+            `https://unpkg.com/@types/${pkg.name
+              .replace("@", "")
+              .replace("/", "__")}/index.d.ts`
+          );
+
+          if (!response.ok) {
+            continue;
+          }
+          const typescriptDefinition = await response.text();
+
+          monacoRef.current.languages.typescript.typescriptDefaults.addExtraLib(
+            typescriptDefinition,
+            `file:///node_modules/@types/${pkg.name}/index.d.ts`
+          );
+          setLoadedTypeDefinitions((prev) => ({ ...prev, [pkg.name]: true }));
+        } catch (error) {
+          console.error(
+            `Failed to load type definitions for ${pkg.name}:`,
+            error
+          );
+        }
+      }
+      setMonacoKey((prev) => prev + 1);
+    };
+
+    loadTypeDefinitions();
+  }, [packages, monacoRef.current, loadedTypeDefinitions]);
 
   const handleSettings = () => {
     setSettingsModal(true);
@@ -108,7 +159,8 @@ const ComplexWebEditor = () => {
     ]);
   };
 
-  const handleEditorDidMount = (editor: any) => {
+  const handleEditorDidMount = (editor: any, monaco: any) => {
+    monacoRef.current = monaco;
     editor.getModel()?.setEOL(0);
 
     requestAnimationFrame(() => {
@@ -120,7 +172,7 @@ const ComplexWebEditor = () => {
   const handleFunctionSelect = (funcName: string, funcCode: string) => {
     setSelectedFunction(funcName);
     setEditorValue(funcCode);
-    setEditorLanguage("javascript");
+    setEditorLanguage("tsx");
   };
 
   const handleEditorChange = (value: string | undefined) => {
@@ -172,28 +224,37 @@ const ComplexWebEditor = () => {
             ${cssValue}
             </style>
             <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script> 
-            <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
-              <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+            
             </head>
             <body>
               <div id="app"></div>
-              <script type="text/javascript">
-                const { React, ReactDOM } = window;
 
-                if (!React || !ReactDOM) {
-                    console.error("React or ReactDOM is not loaded.");
-                }
+              <script type="text/babel" data-presets="react,typescript" data-type="module">
+              ${
+                packages.length > 0 &&
+                packages
+                  .map((pkg) => {
+                    const formattedName = pkg.name
+                      .replace(/-|@|\//g, " ") // Ayrıştırıcıları boşlukla değiştir
+                      .split(" ") // Kelimelere ayır
+                      .map(
+                        (word) => word.charAt(0).toUpperCase() + word.slice(1)
+                      ) // İlk harfi büyük yap
+                      .join(""); // Tekrar birleştir
+
+                    return `import ${formattedName} from '${pkg.unpkgUrl}';`;
+                  })
+                  .join("\n")
+              }
+
+                ${getFormatedOneFile()}
+
+                ReactDom.render(
+                  <App />,
+                  document.getElementById("app")
+                );
+
               </script>
-               <script type="text/babel" data-presets="react" data-type="module">
-               const { React, ReactDOM } = window;
-
-        ${getFormatedOneFile()}
-  
-        ReactDOM.render(
-            <App />,
-          document.getElementById("app")
-        );
-      </script>
             </body>
           </html>
         `);
@@ -208,6 +269,15 @@ const ComplexWebEditor = () => {
     setEditorLanguage("css");
   };
 
+  const handleInstallPackage = (newpkgs: Package[]) => {
+    setPackages(
+      newpkgs.map((pkg) => ({
+        ...pkg,
+        unpkgUrl: `https://cdn.skypack.dev/${pkg.name}`,
+      }))
+    );
+  };
+
   return (
     <div className="h-full flex flex-col">
       <EditorSettings open={settingsModal} onOpenChange={setSettingsModal} />
@@ -217,6 +287,113 @@ const ComplexWebEditor = () => {
         onAddFunction={handleAddFunctionConfirm}
         onOpenChange={setNewFunctionModal}
       />
+      <UnpkgModal
+        defaultPackages={packages}
+        handleInstallPackage={handleInstallPackage}
+        isOpen={unpkgModal}
+        onOpenChange={setUnpkgModal}
+      />
+
+      <Modal isOpen={pkgDetailModal} onOpenChange={setPkgDetailModal}>
+        <ModalContent>
+          {/* Header Section */}
+          <ModalHeader>
+            <h2 className="text-lg font-semibold text-white">
+              Package Details: {pkgDetail?.name || "Unknown Package"}
+            </h2>
+          </ModalHeader>
+
+          {/* Body Section */}
+          <ModalBody>
+            {/* Imported From */}
+            <div className="mb-4">
+              <h3 className="text-sm font-medium text-gray-300">
+                Imported From
+              </h3>
+              <p className="text-xs text-gray-400">
+                {pkgDetail?.unpkgUrl || "No URL available"}
+              </p>
+            </div>
+
+            {/* Example Usage */}
+            <div className="mb-4">
+              <h3 className="text-sm font-medium text-gray-300">
+                Example Usage
+              </h3>
+              <div className="bg-gray-800 p-2 rounded text-xs text-gray-200 font-mono">
+                <code>
+                  const {`{}`} ={" "}
+                  {pkgDetail &&
+                    pkgDetail.name
+                      .replace(/-|@|\//g, " ") // Replace delimiters with space
+                      .split(" ") // Split into words
+                      .map(
+                        (word) => word.charAt(0).toUpperCase() + word.slice(1)
+                      ) // Capitalize first letter
+                      .join("")}
+                </code>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="mb-4">
+              <h3 className="text-sm font-medium text-gray-300">Description</h3>
+              <p className="text-xs text-gray-400">
+                {pkgDetail?.description || "No description available."}
+              </p>
+            </div>
+          </ModalBody>
+
+          {/* Footer Section */}
+          <ModalFooter>
+            <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              {/* Version and License */}
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 text-xs rounded bg-blue-600 text-gray-200">
+                  Version: {pkgDetail?.version || "N/A"}
+                </span>
+                <span className="px-3 py-1 text-xs rounded bg-green-600 text-gray-200">
+                  License: {pkgDetail?.license || "Unknown"}
+                </span>
+              </div>
+
+              {/* External Links */}
+              <div className="flex items-center gap-3">
+                {pkgDetail?.links?.homepage && (
+                  <a
+                    className="text-xs text-blue-400 hover:underline"
+                    href={pkgDetail.links.homepage}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    Homepage
+                  </a>
+                )}
+                {pkgDetail?.links?.repository && (
+                  <a
+                    className="text-xs text-blue-400 hover:underline"
+                    href={pkgDetail.links.repository}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    Repository
+                  </a>
+                )}
+                {pkgDetail?.links?.npm && (
+                  <a
+                    className="text-xs text-blue-400 hover:underline"
+                    href={pkgDetail.links.npm}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    NPM
+                  </a>
+                )}
+              </div>
+            </div>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       <div className="flex items-center justify-between px-4 h-10 border-b border-white/10">
         <div className="flex items-center gap-2">
@@ -304,7 +481,7 @@ const ComplexWebEditor = () => {
         </AnimatePresence>
 
         {/* Left Side bar (Functions) */}
-        <div className="w-1/4 h-full border border-white/20 rounded-lg">
+        <div className="w-1/6 h-full border flex flex-col border-white/20 rounded-lg">
           <div className="flex items-center justify-between px-4 h-10 border-b border-white/10">
             <div className="flex items-center gap-2">
               <div className="flex items-center space-x-2">
@@ -328,7 +505,7 @@ const ComplexWebEditor = () => {
             </div>
           </div>
 
-          <div className="h-full w-full overflow-y-auto">
+          <div className="flex-1 w-full overflow-y-auto">
             <AnimatePresence>
               <motion.div
                 key={"style"}
@@ -402,6 +579,70 @@ const ComplexWebEditor = () => {
               ))}
             </AnimatePresence>
           </div>
+
+          <div className="max-h-[calc(100%)-10rem]h-[calc(100%)-10rem] w-full border rounded-lg border-white/20">
+            <div className="flex items-center justify-between px-4 h-10 border-b border-white/10">
+              <div className="flex items-center gap-2 w-full">
+                <ChevronUp className="w-4 h-4 text-gray-400" />
+
+                <div className="flex items-center gap-3">
+                  <button
+                    className="p-1.5 hover:bg-gray-700 rounded-md transition-colors"
+                    title="Add Package"
+                    onClick={() => setUnpkgModal(true)}
+                  >
+                    <Plus className="w-4 h-4 text-gray-400" />
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="flex-1 w-full overflow-y-auto">
+              {packages.map((pkg, index) => (
+                <div
+                  key={index}
+                  className="p-4 py-2 border-b flex items-center justify-between border-white/10 cursor-pointer"
+                >
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm text-gray-200">{pkg.name}</span>
+                    <span className="text-xs text-gray-500">
+                      {pkg.description.slice(0, 20)}...
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <span className="px-2 py-1 text-xs rounded bg-slate-700 text-white">
+                      {pkg.version}
+                    </span>
+                    <button
+                      className="p-1.5 hover:bg-gray-700 rounded-md transition-colors"
+                      title="Remove Package"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        setPackages((prev) =>
+                          prev.filter((_, i) => i !== index)
+                        );
+                      }}
+                    >
+                      <Trash className="w-4 h-4 text-red-500" />
+                    </button>
+                    <button
+                      className="p-1.5 hover:bg-gray-700 rounded-md transition-colors"
+                      title="Info Package"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        setPkgDetail(pkg);
+                        setPkgDetailModal(true);
+                      }}
+                    >
+                      <Info className="w-4 h-4 text-gray-400" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div
@@ -432,14 +673,81 @@ const ComplexWebEditor = () => {
             </div>
           </div>
           <MonacoEditor
+            key={monacoKey}
             height={editorHeight}
             language={editorLanguage}
             options={getEditorSettings()}
             value={editorValue}
             onChange={handleEditorChange}
-            onMount={(editor, monaco) => {
-              monacoRef.current = monaco;
-              handleEditorDidMount(editor);
+            onMount={async (editor, monaco) => {
+              handleEditorDidMount(editor, monaco);
+
+              if (monaco && editorLanguage === "tsx") {
+                monaco.languages.typescript.typescriptDefaults.setCompilerOptions(
+                  {
+                    target: monaco.languages.typescript.ScriptTarget.Latest,
+                    allowNonTsExtensions: true,
+                    moduleResolution:
+                      monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+                    module: monaco.languages.typescript.ModuleKind.CommonJS,
+                    noEmit: true,
+                    esModuleInterop: true,
+                    jsx: monaco.languages.typescript.JsxEmit.React,
+                    reactNamespace: "React",
+                    allowJs: true,
+                  }
+                );
+
+                monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions(
+                  {
+                    noSemanticValidation: false,
+                    noSyntaxValidation: false,
+                  }
+                );
+
+                monaco.languages.typescript.typescriptDefaults.addExtraLib(
+                  `declare module '*.css';`,
+                  "file:///node_modules/@ytypes/extension.d.ts"
+                );
+
+                const packageUrls: any[] = [
+                  {
+                    url: "https://unpkg.com/@types/react@18.2.1/index.d.ts",
+                    name: "react",
+                  },
+                  {
+                    url: "https://unpkg.com/@mantine/core@7.4.1/lib/index.d.ts",
+                    name: "mantine",
+                  },
+                ];
+
+                Promise.all(
+                  packageUrls.map(({ url, name }) =>
+                    fetch(url).then((res) =>
+                      res.text().then((content) => ({
+                        content,
+                        name,
+                      }))
+                    )
+                  )
+                ).then((responses) => {
+                  const libraries = responses.map(({ content, name }) => ({
+                    content,
+                    filePath: `file:///node_modules/@types/${name}/index.d.ts`,
+                  }));
+
+                  monaco.languages.typescript.typescriptDefaults.setExtraLibs(
+                    libraries
+                  );
+                });
+              }
+              const model = monaco.editor.createModel(
+                functions[0].function_code,
+                "typescript",
+                monaco.Uri.file("main.tsx")
+              );
+
+              editor.setModel(model);
             }}
           />
         </div>
