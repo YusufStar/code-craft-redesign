@@ -38,7 +38,7 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
 });
 
 const BaseEditor = memo(() => {
-  const { generateMonaco } = useMonaco();
+  const { generateMonaco, loadDefaultTypes } = useMonaco();
   const [startTourModal, setStartTourModal] = useState(true);
 
   const { getEditorSettings } = useEditorStore();
@@ -289,6 +289,7 @@ const BaseEditor = memo(() => {
                   monacoRef.current = monaco;
                   handleEditorDidMount(editor);
                   generateMonaco(monaco);
+                  loadDefaultTypes(monaco);
                 }}
               />
             )}

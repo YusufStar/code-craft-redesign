@@ -6,40 +6,84 @@ export interface File {
   isFile: boolean;
   isFolder?: boolean;
   children?: { [key: string]: any };
+  id?: string;
+  name?: string;
+  type?: "file" | "folder";
+}
+
+interface Folder {
+  id: string;
+  name: string;
+  type: "folder";
+  children?: Folder[];
+  files?: File[];
 }
 
 type FileStore = {
   files: File[];
   setFiles: (files: { filename: string; content: string }[]) => void;
+  openFiles: string[];
+  addOpenFile: (file: string) => void;
+  removeOpenFile: (file: string) => void;
+  activeFile: string | null;
+  setActiveFile: (file: string | null) => void;
+  updateContent: (file: string, content: string) => void;
+  getFileContent: (file: string) => string | undefined;
+  getFiles: () => File[];
+  folderStructure: Folder[];
+  setFolderStructure: (folders: Folder[]) => void;
+  openFolders: { [key: string]: boolean };
+  toggleFolder: (folderId: string) => void;
 };
 
 const useReactStore = create<FileStore>((set, get) => ({
   files: [],
-  setFiles: (files) => set({ files: Object.values(createFolderStructure(files)) }),
+  setFiles: (files) => set({ files: files as File[] }),
+  openFiles: [],
+  addOpenFile: (file) =>
+    set((state) => {
+      if (state.openFiles.includes(file)) {
+        return state;
+      }
+      return { openFiles: [...state.openFiles, file] };
+    }),
+  removeOpenFile: (file) =>
+    set((state) => ({ openFiles: state.openFiles.filter((f) => f !== file) })),
+  activeFile: null,
+  setActiveFile: (file) => set({ activeFile: file }),
+  updateContent: (file, content) =>
+    set((state) => ({
+      files: state.files.map((f) =>
+        f.filename === file ? { ...f, content } : f
+      ),
+    })),
+  getFileContent: (file) =>
+    get().files.find((f) => f.filename === file)?.content,
+  getFiles: () => get().files,
+  folderStructure: [],
+  setFolderStructure: (folders) => {
+    set({ folderStructure: folders });
+    const filesFromFolders = (folders: any[]): File[] => {
+      let files: File[] = [];
+      for (const item of folders) {
+        if (item.type === "file") {
+          files.push(item);
+        } else if (item.children) {
+          files.push(...filesFromFolders(Object.values(item.children)));
+        }
+      }
+      return files;
+    };
+    set({ files: filesFromFolders(folders) });
+  },
+  openFolders: {},
+  toggleFolder: (folderId) =>
+    set((state) => ({
+      openFolders: {
+        ...state.openFolders,
+        [folderId]: !state.openFolders[folderId],
+      },
+    })),
 }));
 
 export default useReactStore;
-
-function createFolderStructure(
-  files: { filename: string; content: string }[]
-): { [key: string]: any } {
-  const root: { [key: string]: any } = {};
-
-  for (const file of files) {
-    const pathParts = file.filename.split("/").filter(Boolean);
-    let current = root;
-
-    for (let i = 0; i < pathParts.length - 1; i++) {
-      const part = pathParts[i];
-      if (!current[part]) {
-        current[part] = { isFolder: true, children: {} };
-      }
-      current = current[part].children;
-    }
-
-    const fileName = pathParts[pathParts.length - 1];
-    current[fileName] = { ...file, isFile: true };
-  }
-
-  return root;
-}
