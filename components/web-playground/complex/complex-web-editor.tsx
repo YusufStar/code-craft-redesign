@@ -2,13 +2,12 @@
 
 import { Skeleton } from "@nextui-org/skeleton";
 import dynamic from "next/dynamic";
-import { useEffect, useState, memo, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   ChevronRight,
   ChevronDown,
   File,
   Folder,
-  Plus,
   Download,
   Copy,
   Settings,
@@ -17,32 +16,30 @@ import {
   Check,
 } from "lucide-react";
 import clsx from "clsx";
-import { ScrollShadow, Button, Input, Image } from "@nextui-org/react";
+import { ScrollShadow, Input, Image } from "@nextui-org/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { Monaco } from "@monaco-editor/react";
 import { useSearchParams } from "next/navigation";
 
 import DependencyManager from "./DependencyManager";
-import ProjectSelector from "./ProjectSelector";
+import ProjectSelector, { Project } from "./ProjectSelector";
 
 import TourModal from "@/components/TourModal";
 import ShareSnippet from "@/components/editors/ShareSnippet";
 import EditorSettings from "@/components/editors/EditorSettings";
 import useMounted from "@/hooks/useMounted";
 import { fileToLang, languageIcons } from "@/constants/icons";
-import useReactStore, { File as FileType } from "@/store/reactStore";
-import {
-  createFolder,
-  updateFolder,
-  updateFile,
-  updateFileContent,
-} from "@/actions/fileActions";
+import useReactStore, {
+  File as FileType,
+  type Folder as FolderTypeReact,
+} from "@/store/reactStore";
 import useEditorStore from "@/store/editorStore";
 import { useMonaco } from "@/modules/load-monaco";
 import { getLanguage } from "@/modules/monaco-editor";
 import { FolderType } from "@/store/fileStore";
 import { axiosInstance } from "@/hooks/useAxios";
+import { updateFile, updateFileContent } from "@/actions/reactActions";
 
 const generateRandomWidth = () => `${Math.floor(Math.random() * 75) + 25}%`;
 
@@ -85,19 +82,23 @@ const FileTreeItem = ({
   selectedFile,
   onSelectFile,
   fetchData,
+  projects,
 }: {
   item: ItemType;
   depth?: number;
   selectedFile?: string;
   onSelectFile: (path: string) => void;
   fetchData: () => void;
+  projects: Project[];
 }) => {
-  const { openFolders, toggleFolder } = useReactStore();
+  const { openFolders, toggleFolder, folderStructure } = useReactStore();
   const isFolder = item.type === "folder";
   const path = isFolder ? item.id : item.id;
   const [isEditing, setIsEditing] = useState(false);
   const [newName, setNewName] = useState(item.name || "");
   const isOpen = !!openFolders[path as string];
+  const params = useSearchParams();
+  const projectId = params.get("projectId");
 
   const handleClick = () => {
     if (isFolder) {
@@ -117,13 +118,55 @@ const FileTreeItem = ({
 
   const handleNameSubmit = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
-      if (isFolder) {
-        await updateFolder(path as string, newName);
-      } else {
-        await updateFile(path as string, newName, "");
+      if (newName.trim() === "") {
+        return;
       }
 
-      await fetchData();
+      if (newName === item.name) {
+        setIsEditing(false);
+        return;
+      }
+
+      if (!projectId) {
+        return;
+      }
+
+      // find item in folderstructure for the given path
+      const findFile = (
+        structure: any,
+        targetId: string
+      ): { path: string; name: string } | undefined => {
+        if (!structure) return undefined;
+
+        for (const key in structure) {
+          const item = structure[key];
+          if (item.id === targetId) {
+            return { path: item.id, name: item.name };
+          }
+          if (item.children) {
+            const found = findFile(item.children, targetId);
+            if (found) {
+              return found;
+            }
+          }
+        }
+        return undefined;
+      };
+
+      if (!item.id) return;
+      const file = findFile(folderStructure, item.id);
+
+      if (file && file.path.split("/").length > 2) {
+        await updateFile(
+          projectId,
+          file.path,
+          file.path.replace(item.name ? item.name : "", newName)
+        );
+        await fetchData();
+      } else if (file) {
+        toast.error("Root folder cannot be renamed");
+      }
+
       setIsEditing(false);
     }
   };
@@ -212,6 +255,7 @@ const FileTreeItem = ({
                   depth={depth + 1}
                   fetchData={fetchData}
                   item={child}
+                  projects={projects}
                   selectedFile={selectedFile}
                   onSelectFile={onSelectFile}
                 />
@@ -223,7 +267,13 @@ const FileTreeItem = ({
   );
 };
 
-const FileManagerTab = ({ projectId }: { projectId: string }) => {
+const FileManagerTab = ({
+  projectId,
+  projects,
+}: {
+  projectId: string;
+  projects: Project[];
+}) => {
   const [selectedFile, setSelectedFile] = useState<string>();
   const { folderStructure, addOpenFile, setFolderStructure } = useReactStore();
   const [loading, setLoading] = useState(false);
@@ -263,23 +313,6 @@ const FileManagerTab = ({ projectId }: { projectId: string }) => {
     addOpenFile(path);
   };
 
-  const handleCreateRootFolder = async () => {
-    if (rootFolderName) {
-      setLoading(true);
-      try {
-        const newFolder = (await createFolder(rootFolderName)) as any;
-
-        setFolderStructure([newFolder]);
-        setShowCreateRootFolder(false);
-        setRootFolderName("");
-      } catch (error) {
-        console.error("Error creating root folder:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
   const generateRandomWidth = () => `${Math.floor(Math.random() * 75) + 25}%`;
 
   return (
@@ -306,21 +339,14 @@ const FileManagerTab = ({ projectId }: { projectId: string }) => {
                 value={rootFolderName}
                 onChange={(e) => setRootFolderName(e.target.value)}
               />
-              <Button
-                isIconOnly
-                color="primary"
-                isDisabled={!rootFolderName}
-                size="sm"
-                startContent={<Plus />}
-                variant="bordered"
-                onClick={handleCreateRootFolder}
-              />
             </div>
           ) : (
-            folderStructure.map((folder: any) => (
+            folderStructure &&
+            Object.values(folderStructure).map((folder: any) => (
               <FileTreeItem
                 key={folder.id}
                 fetchData={fetchData}
+                projects={projects}
                 item={folder}
                 selectedFile={selectedFile}
                 onSelectFile={handleSelectFile}
@@ -333,8 +359,8 @@ const FileManagerTab = ({ projectId }: { projectId: string }) => {
   );
 };
 
-const BaseEditor = () => {
-  const { generateMonaco, loadDefaultTypes } = useMonaco();
+const BaseEditor = ({ projectId }: { projectId: string }) => {
+  const { generateMonaco, loadDefaultTypes, loadFilesMonaco } = useMonaco();
   const [startTourModal, setStartTourModal] = useState(true);
 
   const { getEditorSettings } = useEditorStore();
@@ -401,17 +427,14 @@ const BaseEditor = () => {
         clearTimeout(timeoutRef.current);
       }
 
-      timeoutRef.current = setTimeout(() => {
-        updateFileContent(activeFile, value)
-          .then(() => {
-            updateContent(activeFile, value);
-          })
-          .catch((error) => {
-            console.error("Error updating file content:", error);
-          });
+      timeoutRef.current = setTimeout(async () => {
+        console.log("payload:", projectId, activeFile, value);
+        await updateFileContent(projectId, activeFile, value);
       }, 1500);
     }
   };
+
+  useEffect(() => {}, [activeFile, openFiles]);
 
   useEffect(() => {
     if (activeFile) {
@@ -503,109 +526,100 @@ const BaseEditor = () => {
             ))}
         </div>
       </div>
-      {openFiles.length > 0 ? (
-        <>
-          <div className="flex items-center justify-between px-4 h-10 border-b border-white/10">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center space-x-2">
-                <div className="h-3 w-3 rounded-full bg-red-500" />
-                <div className="h-3 w-3 rounded-full bg-yellow-500" />
-                <div className="h-3 w-3 rounded-full bg-green-500" />
-              </div>
-              {activeFile && (
-                <div className="flex items-center gap-2 ml-4">
-                  <Image
-                    alt={activeFile}
-                    height={16}
-                    radius="none"
-                    src={`https://app.requestly.io/delay/100/${
-                      languageIcons[
-                        fileToLang[
-                          getFileName(activeFile)
-                            .split(".")
-                            .pop() as keyof typeof fileToLang
-                        ]
-                      ]
-                    }`}
-                    width={16}
-                  />
-                  <span className="ext-sm text-gray-400">
-                    {getFileName(activeFile)}
-                  </span>
-                </div>
-              )}
+      <div className="flex items-center justify-between px-4 h-10 border-b border-white/10">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center space-x-2">
+            <div className="h-3 w-3 rounded-full bg-red-500" />
+            <div className="h-3 w-3 rounded-full bg-yellow-500" />
+            <div className="h-3 w-3 rounded-full bg-green-500" />
+          </div>
+          {activeFile && (
+            <div className="flex items-center gap-2 ml-4">
+              <Image
+                alt={activeFile}
+                height={16}
+                radius="none"
+                src={`https://app.requestly.io/delay/100/${
+                  languageIcons[
+                    fileToLang[
+                      getFileName(activeFile)
+                        .split(".")
+                        .pop() as keyof typeof fileToLang
+                    ]
+                  ]
+                }`}
+                width={16}
+              />
+              <span className="ext-sm text-gray-400">
+                {getFileName(activeFile)}
+              </span>
             </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                className="p-1.5 hover:bg-gray-700 rounded-md transition-colors"
-                title="Share Snippet"
-                onClick={() => setShareSnippetModal(true)}
-              >
-                <Share className="w-4 h-4 text-gray-400" />
-              </button>
-
-              <button
-                className="p-1.5 hover:bg-gray-700 rounded-md transition-colors"
-                title="Download File"
-                onClick={handleDownload}
-              >
-                <Download className="w-4 h-4 text-gray-400" />
-              </button>
-              <button
-                className="p-1.5 hover:bg-gray-700 rounded-md transition-colors"
-                disabled={copied}
-                title="Copy Code"
-                onClick={handleCopy}
-              >
-                {copied ? (
-                  <Check className="w-4 h-4 text-gray-400" />
-                ) : (
-                  <Copy className="w-4 h-4 text-gray-400" />
-                )}
-              </button>
-              <button
-                className="p-1.5 hover:bg-gray-700 rounded-md transition-colors"
-                title="Editor Settings"
-                onClick={handleSettings}
-              >
-                <Settings className="w-4 h-4 text-gray-400" />
-              </button>
-            </div>
-          </div>
-          <div className="flex-1">
-            <MonacoEditor
-              key={`editor-react`}
-              className={`w-full h-full overflow-hidden`}
-              height="100%"
-              keepCurrentModel={false}
-              language={
-                activeFile ? getLanguage(getFileName(activeFile)) : "plaintext"
-              }
-              options={getEditorSettings()}
-              onChange={handleEditorChange}
-              onMount={(editor, monaco) => {
-                monacoRef.current = monaco;
-                handleEditorDidMount(editor);
-                generateMonaco(monaco);
-                loadDefaultTypes(monaco);
-              }}
-            />
-          </div>
-        </>
-      ) : (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="border border-gray-700 bg-gray-800/50 rounded-md p-4 text-gray-400">
-            Open a file to start editing.
-          </div>
+          )}
         </div>
-      )}
+
+        <div className="flex items-center gap-3">
+          <button
+            className="p-1.5 hover:bg-gray-700 rounded-md transition-colors"
+            title="Share Snippet"
+            onClick={() => setShareSnippetModal(true)}
+          >
+            <Share className="w-4 h-4 text-gray-400" />
+          </button>
+
+          <button
+            className="p-1.5 hover:bg-gray-700 rounded-md transition-colors"
+            title="Download File"
+            onClick={handleDownload}
+          >
+            <Download className="w-4 h-4 text-gray-400" />
+          </button>
+          <button
+            className="p-1.5 hover:bg-gray-700 rounded-md transition-colors"
+            disabled={copied}
+            title="Copy Code"
+            onClick={handleCopy}
+          >
+            {copied ? (
+              <Check className="w-4 h-4 text-gray-400" />
+            ) : (
+              <Copy className="w-4 h-4 text-gray-400" />
+            )}
+          </button>
+          <button
+            className="p-1.5 hover:bg-gray-700 rounded-md transition-colors"
+            title="Editor Settings"
+            onClick={handleSettings}
+          >
+            <Settings className="w-4 h-4 text-gray-400" />
+          </button>
+        </div>
+      </div>
+      <div className="flex-1">
+        <MonacoEditor
+          key={`editor-react`}
+          className={`w-full h-full overflow-hidden`}
+          height="100%"
+          keepCurrentModel={false}
+          language={
+            activeFile ? getLanguage(getFileName(activeFile)) : "plaintext"
+          }
+          options={getEditorSettings()}
+          onChange={handleEditorChange}
+          onMount={(editor, monaco) => {
+            monacoRef.current = monaco;
+            handleEditorDidMount(editor);
+            generateMonaco(monaco);
+            loadDefaultTypes(monaco);
+          }}
+        />
+      </div>
     </div>
   );
 };
 
 const ComplexWebEditor = () => {
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
   const params = useSearchParams();
 
   useEffect(() => {
@@ -617,16 +631,16 @@ const ComplexWebEditor = () => {
   }, [params]);
 
   if (!projectId) {
-    return <ProjectSelector />;
+    return <ProjectSelector projects={projects} setProjects={setProjects} />;
   }
 
   return (
     <div className="h-full flex">
       <div className="w-1/6 border-r border-white/10 p-2">
-        <FileManagerTab projectId={projectId} />
+        <FileManagerTab projects={projects} projectId={projectId} />
       </div>
       <div className="flex-1">
-        <BaseEditor />
+        <BaseEditor projectId={projectId} />
       </div>
       <div className="w-1/6 border-l border-white/10 p-2">
         <DependencyManager projectId={projectId} />

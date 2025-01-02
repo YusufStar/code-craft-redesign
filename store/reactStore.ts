@@ -11,7 +11,7 @@ export interface File {
   type?: "file" | "folder";
 }
 
-interface Folder {
+export interface Folder {
   id: string;
   name: string;
   type: "folder";

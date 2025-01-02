@@ -13,6 +13,7 @@ module.exports = {
         "python",
         "markdown",
         "yaml",
+        "plaintext"
       ],
       features: ["coreCommands", "find", "format", "hover", "suggest"],
       globalAPI: false,

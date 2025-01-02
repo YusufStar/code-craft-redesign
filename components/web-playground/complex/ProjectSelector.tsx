@@ -19,13 +19,18 @@ import { Button } from "@nextui-org/button";
 
 import { axiosInstance } from "@/hooks/useAxios";
 
-interface Project {
+export interface Project {
   id: string;
   name: string;
 }
 
-const ProjectSelector = () => {
-  const [projects, setProjects] = useState<Project[]>([]);
+const ProjectSelector = ({
+  setProjects,
+  projects
+} : {
+  setProjects: (projects: Project[]) => void;
+  projects: Project[];
+}) => {
   const [loading, setLoading] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [isOpen, onOpenChange] = useState(false);
