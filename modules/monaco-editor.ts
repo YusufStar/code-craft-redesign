@@ -12,7 +12,7 @@ export const getLanguage = (filename: string) => {
     case "js":
     case "cjs":
     case "mjs": {
-      return "javascript";
+      return "typescript";
     }
     case "jsx": {
       return "jsx";

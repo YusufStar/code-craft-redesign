@@ -53,3 +53,15 @@ export const updateFolder = async (
     throw error;
   }
 };
+
+export const deleteFile = async (
+  projectId: string,
+  filename: string
+): Promise<void> => {
+  try {
+    await axiosInstance.delete(`/react/${projectId}/files`, { data: { filename } });
+  } catch (error) {
+    console.error("Error deleting file:", error);
+    throw error;
+  }
+};

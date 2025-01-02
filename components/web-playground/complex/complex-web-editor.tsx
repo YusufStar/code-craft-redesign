@@ -14,6 +14,7 @@ import {
   X,
   Share,
   Check,
+  Trash,
 } from "lucide-react";
 import clsx from "clsx";
 import { ScrollShadow, Input, Image } from "@nextui-org/react";
@@ -39,7 +40,12 @@ import { useMonaco } from "@/modules/load-monaco";
 import { getLanguage } from "@/modules/monaco-editor";
 import { FolderType } from "@/store/fileStore";
 import { axiosInstance } from "@/hooks/useAxios";
-import { updateFile, updateFileContent, updateFolder } from "@/actions/reactActions";
+import {
+  deleteFile,
+  updateFile,
+  updateFileContent,
+  updateFolder,
+} from "@/actions/reactActions";
 
 const generateRandomWidth = () => `${Math.floor(Math.random() * 75) + 25}%`;
 
@@ -183,11 +189,17 @@ const FileTreeItem = ({
     setIsEditing(false);
   };
 
+  const handleDeleteFile = async () => {
+    if (!projectId || !item.id) return;
+    await deleteFile(projectId, item.id);
+    await fetchData();
+  };
+
   return (
     <div>
       <div
         className={clsx(
-          "flex items-center py-1 px-2 hover:bg-black/50 rounded-sm transition-all duration-200 cursor-pointer text-sm",
+          "flex items-center py-1 px-2 hover:bg-black/20 rounded-sm transition-all duration-200 cursor-pointer text-sm",
           selectedFile === path && "bg-gray-950"
         )}
         role="button"
@@ -243,7 +255,22 @@ const FileTreeItem = ({
               autoFocus
             />
           ) : (
-            <span className="text-gray-300">{item.name}</span>
+            <>
+              <span className="text-gray-300">{item.name}</span>
+              {item.type === "file" && (
+                <button
+                  aria-label="Remove Dependency"
+                  className="p-1 ml-auto rounded transition-all duration-150 ease-in-out bg-black hover:bg-white/10"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    handleDeleteFile();
+                  }}
+                >
+                  <Trash className="h-4 w-4 text-red-500" />
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -368,7 +395,7 @@ const FileManagerTab = ({
 };
 
 const BaseEditor = ({ projectId }: { projectId: string }) => {
-  const { generateMonaco, loadDefaultTypes, loadFilesMonaco } = useMonaco();
+  const { generateMonaco, loadDefaultTypes } = useMonaco();
   const [startTourModal, setStartTourModal] = useState(true);
 
   const { getEditorSettings } = useEditorStore();
@@ -442,8 +469,6 @@ const BaseEditor = ({ projectId }: { projectId: string }) => {
     }
   };
 
-  useEffect(() => {}, [activeFile, openFiles]);
-
   useEffect(() => {
     if (activeFile) {
       const content = getFileContent(activeFile);
@@ -501,7 +526,7 @@ const BaseEditor = ({ projectId }: { projectId: string }) => {
   if (!mounted) return;
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col py-2 rounded-lg">
       <EditorSettings open={settingsModal} onOpenChange={setSettingsModal} />
       <ShareSnippet
         open={shareSnippetModal}

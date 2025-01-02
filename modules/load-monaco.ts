@@ -4,8 +4,6 @@ import { Monaco } from "@monaco-editor/react";
 import themeList from "monaco-themes/themes/themelist.json";
 import { useState } from "react";
 
-import { File } from "@/store/reactStore";
-
 export const useMonaco = () => {
   const [loadedThemes, setLoadedThemes] = useState<boolean>(false);
 
@@ -16,6 +14,15 @@ export const useMonaco = () => {
       import(`monaco-themes/themes/${value}.json`).then((data) => {
         monaco.editor.defineTheme(key, data);
       });
+    });
+
+    monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
+      jsx: monaco.languages.typescript.JsxEmit.React,
+      jsxFactory: "React.createElement",
+      reactNamespace: "React",
+      allowNonTsExtensions: true,
+      allowJs: true,
+      target: monaco.languages.typescript.ScriptTarget.Latest,
     });
 
     setLoadedThemes(true);
@@ -67,21 +74,6 @@ export const useMonaco = () => {
       .catch(() => {});
   };
 
-  const loadFilesMonaco = (monaco: Monaco, files: File[]) => {
-    monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
-      target: monaco.languages.typescript.ScriptTarget.ES2016,
-      allowNonTsExtensions: true,
-    });
-
-    files.forEach((file) => {
-      monaco.editor.createModel(
-        file.content,
-        "typescript",
-        monaco.Uri.file(file.filename)
-      );
-    });
-  };
-
   const loadTypesFromPackages = (
     monaco: Monaco,
     packages: {
@@ -106,7 +98,6 @@ export const useMonaco = () => {
   return {
     generateMonaco,
     loadedThemes,
-    loadFilesMonaco,
     loadTypesFromPackages,
     loadDefaultTypes,
   };
