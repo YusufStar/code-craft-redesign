@@ -7,27 +7,27 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
-  Card,
-  CardHeader,
-  ScrollShadow,
-  Skeleton,
 } from "@nextui-org/react";
-import { Plus } from "lucide-react";
+import { Card, CardHeader, CardBody } from "@nextui-org/card";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Button } from "@nextui-org/button";
+import { Chrome, Server, Trash } from "lucide-react";
 
 import { axiosInstance } from "@/hooks/useAxios";
+import { languageIcons } from "@/constants/icons";
+import Link from "next/link";
 
 export interface Project {
   id: string;
   name: string;
+  port: number;
 }
 
 const ProjectSelector = ({
   setProjects,
-  projects
-} : {
+  projects,
+}: {
   setProjects: (projects: Project[]) => void;
   projects: Project[];
 }) => {
@@ -79,52 +79,77 @@ const ProjectSelector = ({
     router.push(`/react-editor?projectId=${projectId}`);
   };
 
-  const generateRandomWidth = () => `${Math.floor(Math.random() * 75) + 25}%`;
-
   return (
     <div className="flex flex-col items-center justify-center h-full">
-      <h2 className="text-2xl font-bold mb-4 text-gray-300">
-        Select a Project
-      </h2>
-      <ScrollShadow className="w-full max-w-md">
-        {loading ? (
-          <div className="flex flex-col gap-2 p-1">
-            {Array.from({ length: 5 }).map((_, index) => (
-              <Skeleton
-                key={index}
-                className={`h-10 rounded`}
-                style={{ width: generateRandomWidth() }}
-              />
-            ))}
+      <Card className="w-full max-w-md">
+        <CardHeader>Select or Create a Project</CardHeader>
+
+        <CardBody>
+          <div className="flex flex-col">
+            <span className="text-xs mb-2">Projects:</span>
+
+            {loading ? (
+              <div>Loading...</div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {projects.map((project) => (
+                  <button
+                    key={project.id}
+                    className="
+                      flex items-center gap-2
+                      p-2 rounded-md cursor-pointer
+                      hover:bg-gray-100/10 transition-colors
+                    "
+                    onClick={() => handleSelectProject(project.id)}
+                  >
+                    <span className="flex items-center gap-2">
+                      <img
+                        alt="React"
+                        className="w-6 h-6"
+                        src={languageIcons["react"]}
+                      />
+                    </span>
+                    <span>{project.name}</span>
+
+                    <div className="flex items-center gap-1 ml-auto">
+                      <Link
+                        href={`http://localhost:${project.port}`}
+                        target="_blank"
+                        className="p-1.5 flex items-center rounded transition-all duration-150 ease-in-out bg-white/10 hover:bg-black"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                      >
+                        <Chrome className="h-4 w-4 text-blue-500" />
+                      </Link>
+                      <button
+                        className="p-1.5 flex items-center rounded transition-all duration-150 ease-in-out bg-white/10 hover:bg-black"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                        }}
+                      >
+                        <Server className="h-4 w-4 text-blue-500" />
+                        <span className="text-xs ml-1">{project.port}</span>
+                      </button>
+                      <button
+                        className="p-1.5 rounded transition-all duration-150 ease-in-out bg-white/10 hover:bg-black"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                        }}
+                      >
+                        <Trash className="h-4 w-4 text-red-500" />
+                      </button>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-        ) : projects.length > 0 ? (
-          <div className="flex flex-col gap-2">
-            {projects.map((project) => (
-              <Card
-                key={project.id}
-                isPressable
-                className="border-gray-700 bg-gray-800/50 hover:bg-gray-700 transition-colors"
-                onClick={() => handleSelectProject(project.id)}
-              >
-                <CardHeader className="text-gray-300">
-                  {project.name}
-                </CardHeader>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="text-gray-400">No projects found.</div>
-        )}
-      </ScrollShadow>
-      <Button
-        className="mt-4"
-        color="primary"
-        startContent={<Plus />}
-        variant="bordered"
-        onClick={() => onOpenChange(true)}
-      >
-        Create New Project
-      </Button>
+        </CardBody>
+      </Card>
+
       <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
         <ModalContent>
           <ModalHeader className="flex flex-col gap-1">

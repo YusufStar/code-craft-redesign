@@ -45,6 +45,7 @@ const useReactStore = create<FileStore>((set, get) => ({
       if (state.openFiles.includes(file)) {
         return state;
       }
+
       return { openFiles: [...state.openFiles, file] };
     }),
   removeOpenFile: (file) =>
@@ -65,6 +66,7 @@ const useReactStore = create<FileStore>((set, get) => ({
     set({ folderStructure: folders });
     const filesFromFolders = (folders: any[]): File[] => {
       let files: File[] = [];
+
       for (const item of folders) {
         if (item.type === "file") {
           files.push(item);
@@ -72,8 +74,10 @@ const useReactStore = create<FileStore>((set, get) => ({
           files.push(...filesFromFolders(Object.values(item.children)));
         }
       }
+
       return files;
     };
+
     set({ files: filesFromFolders(folders) });
   },
   openFolders: {},

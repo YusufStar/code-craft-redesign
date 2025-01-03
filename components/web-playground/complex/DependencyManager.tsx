@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { ScrollShadow, Input, Button, Skeleton } from "@nextui-org/react";
 import { Plus, Trash } from "lucide-react";
 import { toast } from "sonner";
+
 import { axiosInstance } from "@/hooks/useAxios";
 
 interface Dependency {
@@ -13,7 +14,8 @@ const DependencyManager = ({ projectId }: { projectId: string }) => {
   const [dependencies, setDependencies] = useState<Dependency | null>(null);
   const [loading, setLoading] = useState(false);
   const [newDependency, setNewDependency] = useState("");
-  const [filteredDependencies, setFilteredDependencies] = useState<Dependency | null>(null);
+  const [filteredDependencies, setFilteredDependencies] =
+    useState<Dependency | null>(null);
 
   const fetchDependencies = async () => {
     setLoading(true);
@@ -65,6 +67,7 @@ const DependencyManager = ({ projectId }: { projectId: string }) => {
   const handleAddDependency = async () => {
     if (!newDependency.trim()) {
       toast.error("Dependency name cannot be empty.");
+
       return;
     }
     setLoading(true);
@@ -93,12 +96,14 @@ const DependencyManager = ({ projectId }: { projectId: string }) => {
 
   const handleSearchDependency = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
+
     setNewDependency(value);
 
     if (!dependencies) return;
 
     if (value.trim() === "") {
       setFilteredDependencies(dependencies);
+
       return;
     }
 
@@ -107,6 +112,7 @@ const DependencyManager = ({ projectId }: { projectId: string }) => {
         key.toLowerCase().includes(value.toLowerCase())
       )
     );
+
     setFilteredDependencies(filtered);
   };
 
@@ -115,9 +121,9 @@ const DependencyManager = ({ projectId }: { projectId: string }) => {
   return (
     <div className="relative h-full">
       <div className="relative h-full bg-[#0d0d12] rounded-xl p-2 ring-1 ring-gray-800/50 overflow-hidden">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex gap-2 items-center justify-between mb-2">
           <Input
-            className="w-3/4"
+            className="w-full"
             placeholder="Search dependency"
             size="sm"
             type="text"

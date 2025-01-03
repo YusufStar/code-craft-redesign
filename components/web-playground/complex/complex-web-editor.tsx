@@ -15,6 +15,7 @@ import {
   Share,
   Check,
   Trash,
+  Play,
 } from "lucide-react";
 import clsx from "clsx";
 import { ScrollShadow, Input, Image } from "@nextui-org/react";
@@ -31,10 +32,7 @@ import ShareSnippet from "@/components/editors/ShareSnippet";
 import EditorSettings from "@/components/editors/EditorSettings";
 import useMounted from "@/hooks/useMounted";
 import { fileToLang, languageIcons } from "@/constants/icons";
-import useReactStore, {
-  File as FileType,
-  type Folder as FolderTypeReact,
-} from "@/store/reactStore";
+import useReactStore, { File as FileType } from "@/store/reactStore";
 import useEditorStore from "@/store/editorStore";
 import { useMonaco } from "@/modules/load-monaco";
 import { getLanguage } from "@/modules/monaco-editor";
@@ -130,6 +128,7 @@ const FileTreeItem = ({
 
       if (newName === item.name) {
         setIsEditing(false);
+
         return;
       }
 
@@ -146,16 +145,19 @@ const FileTreeItem = ({
 
         for (const key in structure) {
           const item = structure[key];
+
           if (item.id === targetId) {
             return { path: item.id, name: item.name };
           }
           if (item.children) {
             const found = findFile(item.children, targetId);
+
             if (found) {
               return found;
             }
           }
         }
+
         return undefined;
       };
 
@@ -381,8 +383,8 @@ const FileManagerTab = ({
               <FileTreeItem
                 key={folder.id}
                 fetchData={fetchData}
-                projects={projects}
                 item={folder}
+                projects={projects}
                 selectedFile={selectedFile}
                 onSelectFile={handleSelectFile}
               />
@@ -410,7 +412,6 @@ const BaseEditor = ({ projectId }: { projectId: string }) => {
     removeOpenFile,
     activeFile,
     setActiveFile,
-    updateContent,
     getFileContent,
     getFiles,
   } = useReactStore();
@@ -463,9 +464,29 @@ const BaseEditor = ({ projectId }: { projectId: string }) => {
       }
 
       timeoutRef.current = setTimeout(async () => {
-        console.log("payload:", projectId, activeFile, value);
         await updateFileContent(projectId, activeFile, value);
       }, 1500);
+    }
+  };
+
+  const handleDevServer = async () => {
+    try {
+      if (!projectId) {
+        toast.error("Proje ID'si bulunamadı.");
+        return;
+      }
+      const response = await axiosInstance.post(`/react/${projectId}/run`);
+
+      if (response.status === 200) {
+        toast.success(response.data.message);
+      } else {
+        toast.error("Geliştirme sunucusu başlatılamadı.");
+      }
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+          "Geliştirme sunucusu başlatılırken bir hata oluştu."
+      );
     }
   };
 
@@ -625,6 +646,13 @@ const BaseEditor = ({ projectId }: { projectId: string }) => {
           >
             <Settings className="w-4 h-4 text-gray-400" />
           </button>
+          <button
+            className="p-1.5 hover:bg-gray-700 rounded-md transition-colors"
+            title="Editor Settings"
+            onClick={handleDevServer}
+          >
+            <Play className="w-4 h-4 text-green-500" />
+          </button>
         </div>
       </div>
       <div className="flex-1">
@@ -670,7 +698,7 @@ const ComplexWebEditor = () => {
   return (
     <div className="h-full flex">
       <div className="w-1/6 border-r border-white/10 p-2">
-        <FileManagerTab projects={projects} projectId={projectId} />
+        <FileManagerTab projectId={projectId} projects={projects} />
       </div>
       <div className="flex-1">
         <BaseEditor projectId={projectId} />
