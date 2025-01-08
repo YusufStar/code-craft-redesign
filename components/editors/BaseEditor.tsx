@@ -155,14 +155,14 @@ const BaseEditor = memo(() => {
   };
 
   useEffect(() => {
-    const hasVisited = localStorage.getItem("hasVisited");
+    // const hasVisited = localStorage.getItem("hasVisited");
 
-    if (!hasVisited) {
-      setStartTourModal(true);
-      localStorage.setItem("hasVisited", "true");
-    } else {
-      setStartTourModal(false);
-    }
+    // if (!hasVisited) {
+    //   setStartTourModal(true);
+    //   localStorage.setItem("hasVisited", "true");
+    // } else {
+    //   setStartTourModal(false);
+    // }
   }, []);
 
   if (!mounted) return;

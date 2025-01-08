@@ -1,17 +1,20 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { ScrollShadow, Input, Button, Skeleton } from "@nextui-org/react";
+import {
+  ScrollShadow,
+  Input,
+  Button,
+  Skeleton,
+  Spinner,
+} from "@nextui-org/react";
 import { Plus, Trash } from "lucide-react";
 import { toast } from "sonner";
 
 import { axiosInstance } from "@/hooks/useAxios";
-
-interface Dependency {
-  [key: string]: string;
-}
+import useReactStore, { Dependency } from "@/store/reactStore";
 
 const DependencyManager = ({ projectId }: { projectId: string }) => {
-  const [dependencies, setDependencies] = useState<Dependency | null>(null);
+  const { dependencies, setDependencies } = useReactStore();
   const [loading, setLoading] = useState(false);
   const [newDependency, setNewDependency] = useState("");
   const [filteredDependencies, setFilteredDependencies] =
@@ -23,8 +26,6 @@ const DependencyManager = ({ projectId }: { projectId: string }) => {
       const { data } = await axiosInstance.get(
         `/react/${projectId}/dependencies`
       );
-
-      console.log(data);
 
       setDependencies(data);
       setFilteredDependencies(data);
@@ -39,60 +40,6 @@ const DependencyManager = ({ projectId }: { projectId: string }) => {
   useEffect(() => {
     fetchDependencies();
   }, [projectId]);
-
-  const handleRemoveDependency = async (dependency: string) => {
-    setLoading(true);
-    try {
-      const response = await fetch(`/api/react/${projectId}/dependencies`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ dependency }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      toast.success("Dependency removed successfully.");
-      fetchDependencies();
-    } catch (error) {
-      console.error("Failed to remove dependency:", error);
-      toast.error("Failed to remove dependency.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAddDependency = async () => {
-    if (!newDependency.trim()) {
-      toast.error("Dependency name cannot be empty.");
-
-      return;
-    }
-    setLoading(true);
-    try {
-      const response = await fetch(`/api/react/${projectId}/dependencies`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ dependency: newDependency }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      toast.success("Dependency added successfully.");
-      setNewDependency("");
-      fetchDependencies();
-    } catch (error) {
-      console.error("Failed to add dependency:", error);
-      toast.error("Failed to add dependency.");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSearchDependency = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -152,24 +99,13 @@ const DependencyManager = ({ projectId }: { projectId: string }) => {
           ) : filteredDependencies ? (
             <ul className="flex flex-col gap-2">
               {Object.entries(filteredDependencies).map(([key, value]) => (
-                <li
+                <DependencyItem
                   key={key}
-                  className="flex items-center justify-between p-2 rounded-md bg-gray-800/50"
-                >
-                  <div className="flex flex-col gap-1">
-                    <span className="text-gray-300 text-sm">{key}</span>
-                    <span className="text-gray-500 text-xs">
-                      {value.replace("^", "@")}
-                    </span>
-                  </div>
-                  <button
-                    aria-label="Remove Dependency"
-                    className="p-1 rounded transition-all duration-150 ease-in-out bg-black hover:bg-white/10"
-                    onClick={() => handleRemoveDependency(key)}
-                  >
-                    <Trash className="h-4 w-4 text-red-500" />
-                  </button>
-                </li>
+                  name={key}
+                  version={value}
+                  projectId={projectId}
+                  fetchDependencies={fetchDependencies}
+                />
               ))}
             </ul>
           ) : (
@@ -180,6 +116,70 @@ const DependencyManager = ({ projectId }: { projectId: string }) => {
         </ScrollShadow>
       </div>
     </div>
+  );
+};
+
+const DependencyItem = ({
+  name,
+  version,
+  projectId,
+  fetchDependencies,
+}: {
+  name: string;
+  version: string;
+  projectId: string;
+  fetchDependencies: () => void;
+}) => {
+  const [loading, setLoading] = useState(false);
+  const { setDependencies } = useReactStore();
+
+  const handleRemoveDependency = async () => {
+    setLoading(true);
+
+    try {
+      await axiosInstance.delete(`/react/${projectId}/dependencies`, {
+        data: {
+          dependency: name,
+        },
+      });
+
+      toast.success("Dependency removed successfully.");
+
+      const { data } = await axiosInstance.get(
+        `/react/${projectId}/dependencies`
+      );
+
+      setDependencies(data);
+      await fetchDependencies();
+    } catch (error) {
+      console.error("Failed to remove dependency:", error);
+      toast.error("Failed to remove dependency.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <li className="flex items-center justify-between p-2 rounded-md bg-gray-800/50">
+      <div className="flex flex-col gap-1">
+        <span className="text-gray-300 text-sm">{name}</span>
+        <span className="text-gray-500 text-xs">
+          {version.replace("^", "@")}
+        </span>
+      </div>
+      <button
+        aria-label="Remove Dependency"
+        className="h-6 w-6 flex items-center justify-center rounded transition-all disabled:opacity-75 duration-150 ease-in-out bg-black hover:bg-white/10"
+        disabled={loading}
+        onClick={handleRemoveDependency}
+      >
+        {loading ? (
+          <Spinner size="sm" color="primary" />
+        ) : (
+          <Trash className="h-4 w-4 text-red-500" />
+        )}
+      </button>
+    </li>
   );
 };
 

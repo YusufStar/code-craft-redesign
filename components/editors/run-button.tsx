@@ -14,7 +14,7 @@ import { AnimatePresence } from "framer-motion";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 
-import { FileType } from "./MultiFileSelect";
+import { type FileType } from "../MultiFileSelect";
 
 import useFileStore from "@/store/fileStore";
 import { axiosInstance } from "@/hooks/useAxios";

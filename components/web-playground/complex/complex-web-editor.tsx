@@ -397,8 +397,8 @@ const FileManagerTab = ({
 };
 
 const BaseEditor = ({ projectId }: { projectId: string }) => {
-  const { generateMonaco, loadDefaultTypes } = useMonaco();
-  const [startTourModal, setStartTourModal] = useState(true);
+  const { generateMonaco, loadTypesFromPackages } =
+    useMonaco();
 
   const { getEditorSettings } = useEditorStore();
   const mounted = useMounted();
@@ -414,6 +414,7 @@ const BaseEditor = ({ projectId }: { projectId: string }) => {
     setActiveFile,
     getFileContent,
     getFiles,
+    dependencies,
   } = useReactStore();
 
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -534,15 +535,9 @@ const BaseEditor = ({ projectId }: { projectId: string }) => {
   };
 
   useEffect(() => {
-    const hasVisited = localStorage.getItem("hasVisited");
-
-    if (!hasVisited) {
-      setStartTourModal(true);
-      localStorage.setItem("hasVisited", "true");
-    } else {
-      setStartTourModal(false);
-    }
-  }, []);
+    if (!monacoRef.current || !dependencies) return;
+    loadTypesFromPackages(monacoRef.current, dependencies);
+  }, [dependencies, monacoRef.current]);
 
   if (!mounted) return;
 
@@ -553,7 +548,6 @@ const BaseEditor = ({ projectId }: { projectId: string }) => {
         open={shareSnippetModal}
         onOpenChange={setShareSnippetModal}
       />
-      <TourModal open={startTourModal} onOpenChange={setStartTourModal} />
 
       <div className="flex h-9 items-center border-b border-white/10 overflow-x-auto">
         <div className="flex flex-nowrap whitespace-nowrap">
@@ -667,10 +661,20 @@ const BaseEditor = ({ projectId }: { projectId: string }) => {
           options={getEditorSettings()}
           onChange={handleEditorChange}
           onMount={(editor, monaco) => {
+            monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
+              jsx: monaco.languages.typescript.JsxEmit.React, // Ensure React JSX support
+              target: monaco.languages.typescript.ScriptTarget.Latest, // Set the target JavaScript version
+              moduleResolution:
+                monaco.languages.typescript.ModuleResolutionKind.NodeJs, // Use Node.js module resolution
+              allowJs: true, // Allow JavaScript files
+              esModuleInterop: true, // Enable ES Module interoperability for imports
+              skipLibCheck: true, // Skip library type checking for performance improvement
+            });
+
             monacoRef.current = monaco;
+
             handleEditorDidMount(editor);
             generateMonaco(monaco);
-            loadDefaultTypes(monaco);
           }}
         />
       </div>

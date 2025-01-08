@@ -1,5 +1,6 @@
 "use client";
 
+import { Dependency } from "@/store/reactStore";
 import { Monaco } from "@monaco-editor/react";
 import themeList from "monaco-themes/themes/themelist.json";
 import { useState } from "react";
@@ -74,24 +75,28 @@ export const useMonaco = () => {
       .catch(() => {});
   };
 
-  const loadTypesFromPackages = (
-    monaco: Monaco,
-    packages: {
-      name: string;
-      version: string;
-    }[]
-  ) => {
-    packages.forEach((pkg) => {
+  const loadTypesFromPackages = (monaco: Monaco, packages: Dependency) => {
+    Object.entries(packages).forEach(([name, version]) => {
       fetch(
-        `https://unpkg.com/@types/${pkg.name}@${pkg.version}/index.d.ts`
-      ).then(async (response) => {
-        const content = await response.text();
+        `https://unpkg.com/@types/${name}@${version.replace("^", "").replace("@", "")}/index.d.ts`
+      )
+        .then(async (response) => {
+          const content = await response.text();
 
-        monaco.languages.typescript.typescriptDefaults.addExtraLib(
-          content,
-          `file:///node_modules/@types/${pkg.name}/index.d.ts`
-        );
-      });
+          // Add TypeScript definitions for Monaco (React types included)
+          monaco.languages.typescript.typescriptDefaults.addExtraLib(
+            content,
+            `file:///node_modules/@types/${name}/index.d.ts`
+          );
+          
+          monaco.languages.typescript.javascriptDefaults.addExtraLib(
+            content,
+            `file:///node_modules/@types/${name}/index.d.ts`
+          );
+        })
+        .catch((error) => {
+          console.error(`Failed to load types for ${name}:`, error);
+        });
     });
   };
 

@@ -12,7 +12,7 @@ import { Card, CardHeader, CardBody } from "@nextui-org/card";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Button } from "@nextui-org/button";
-import { Chrome, Server, Trash } from "lucide-react";
+import { Chrome, Plus, Server, Trash } from "lucide-react";
 
 import { axiosInstance } from "@/hooks/useAxios";
 import { languageIcons } from "@/constants/icons";
@@ -41,7 +41,6 @@ const ProjectSelector = ({
     try {
       const { data } = await axiosInstance.get(`/react`);
 
-      console.log(data);
       setProjects(data);
     } catch (error) {
       console.error("Failed to fetch projects:", error);
@@ -82,7 +81,16 @@ const ProjectSelector = ({
   return (
     <div className="flex flex-col items-center justify-center h-full">
       <Card className="w-full max-w-md">
-        <CardHeader>Select or Create a Project</CardHeader>
+        <CardHeader>
+          <span>Select or Create a Project</span>
+
+          <button
+            className="p-1.5 ml-auto hover:bg-gray-700 rounded-md transition-colors"
+            onClick={() => onOpenChange(true)}
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </CardHeader>
 
         <CardBody>
           <div className="flex flex-col">

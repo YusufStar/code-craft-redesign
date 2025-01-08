@@ -10,6 +10,7 @@
 	},
 	"dependencies": {
 		"@babel/standalone": "^7.26.4",
+		"@blitz/monaco-auto-import": "^1.0.7",
 		"@markuplint/parser-utils": "^4.8.2",
 		"@monaco-editor/react": "^4.6.0",
 		"@nextui-org/button": "2.2.3",
@@ -55,6 +56,7 @@
 		"react": "18.3.1",
 		"react-dom": "18.3.1",
 		"react-joyride": "^2.9.3",
+		"remove": "^0.1.5",
 		"sonner": "^1.7.1",
 		"tauri": "^0.15.0",
 		"tm-themes": "^1.9.7",

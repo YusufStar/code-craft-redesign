@@ -1,11 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  webpack: (config, { isServer }) => {
+  webpack(config, { isServer }) {
     if (!isServer) {
+      config.module.rules.push({
+        test: /\.worker\.ts$/,
+        use: { loader: "worker-loader" },
+      });
+
       config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false, // fs modülünü devre dışı bırak
-        path: false, // path modülünü devre dışı bırak
+        fs: false,
+        path: false,
+        os: false,
+        worker_threads: false,
       };
     }
     return config;

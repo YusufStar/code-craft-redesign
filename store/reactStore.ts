@@ -19,6 +19,10 @@ export interface Folder {
   files?: File[];
 }
 
+export interface Dependency {
+  [key: string]: string;
+}
+
 type FileStore = {
   files: File[];
   setFiles: (files: { filename: string; content: string }[]) => void;
@@ -34,6 +38,8 @@ type FileStore = {
   setFolderStructure: (folders: Folder[]) => void;
   openFolders: { [key: string]: boolean };
   toggleFolder: (folderId: string) => void;
+  dependencies: Dependency | null;
+  setDependencies: (dependencies: Dependency) => void;
 };
 
 const useReactStore = create<FileStore>((set, get) => ({
@@ -88,6 +94,8 @@ const useReactStore = create<FileStore>((set, get) => ({
         [folderId]: !state.openFolders[folderId],
       },
     })),
+  dependencies: null,
+  setDependencies: (dependencies) => set({ dependencies }),
 }));
 
 export default useReactStore;
