@@ -123,7 +123,6 @@ const BaseEditor = memo(() => {
       if (editorInstance && content !== undefined) {
         editorInstance.setValue(content);
       }
-      console.log("Active file content:", content);
     }
   }, [activeFile, getFileContent, editorInstance]);
 

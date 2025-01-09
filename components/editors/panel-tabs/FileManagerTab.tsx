@@ -395,7 +395,6 @@ const FileManagerTab = () => {
   const handleSelectFile = (path: string) => {
     setSelectedFile(path);
     addOpenFile(path);
-    console.log("Selected file:", path);
   };
 
   const handleCreateRootFolder = async () => {
