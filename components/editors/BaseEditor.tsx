@@ -156,7 +156,6 @@ const BaseEditor = memo(() => {
 
   useEffect(() => {
     // const hasVisited = localStorage.getItem("hasVisited");
-
     // if (!hasVisited) {
     //   setStartTourModal(true);
     //   localStorage.setItem("hasVisited", "true");
@@ -297,11 +296,7 @@ const BaseEditor = memo(() => {
         </>
       ) : (
         <div className="flex-1 flex items-center justify-center">
-          <TextEditor 
-          cacheSize={5}
-          language="python"
-          refreshInterval={500}
-          />
+          <TextEditor language="python" />
         </div>
       )}
     </div>

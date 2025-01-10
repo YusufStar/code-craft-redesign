@@ -47,6 +47,7 @@
 		"global": "^4.4.0",
 		"intl-messageformat": "^10.5.0",
 		"jszip": "^3.10.1",
+		"lodash.debounce": "^4.0.8",
 		"lucide-react": "^0.469.0",
 		"markuplint": "^4.11.4",
 		"monaco-editor": "^0.52.2",
