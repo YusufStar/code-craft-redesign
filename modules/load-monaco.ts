@@ -1,9 +1,10 @@
 "use client";
 
-import { Dependency } from "@/store/reactStore";
 import { Monaco } from "@monaco-editor/react";
 import themeList from "monaco-themes/themes/themelist.json";
 import { useState } from "react";
+
+import { Dependency } from "@/store/reactStore";
 
 export const useMonaco = () => {
   const [loadedThemes, setLoadedThemes] = useState<boolean>(false);

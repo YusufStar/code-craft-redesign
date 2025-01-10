@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Monaco } from "@monaco-editor/react";
 
 import TourModal from "../TourModal";
+import TextEditor from "../editor";
 
 import ShareSnippet from "./ShareSnippet";
 import EditorSettings from "./EditorSettings";
@@ -296,9 +297,11 @@ const BaseEditor = memo(() => {
         </>
       ) : (
         <div className="flex-1 flex items-center justify-center">
-          <div className="border border-gray-700 bg-gray-800/50 rounded-md p-4 text-gray-400">
-            Open a file to start editing.
-          </div>
+          <TextEditor 
+          cacheSize={5}
+          language="python"
+          refreshInterval={500}
+          />
         </div>
       )}
     </div>

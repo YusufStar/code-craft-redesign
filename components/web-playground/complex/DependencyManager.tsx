@@ -101,10 +101,10 @@ const DependencyManager = ({ projectId }: { projectId: string }) => {
               {Object.entries(filteredDependencies).map(([key, value]) => (
                 <DependencyItem
                   key={key}
-                  name={key}
-                  version={value}
-                  projectId={projectId}
                   fetchDependencies={fetchDependencies}
+                  name={key}
+                  projectId={projectId}
+                  version={value}
                 />
               ))}
             </ul>
@@ -174,7 +174,7 @@ const DependencyItem = ({
         onClick={handleRemoveDependency}
       >
         {loading ? (
-          <Spinner size="sm" color="primary" />
+          <Spinner color="primary" size="sm" />
         ) : (
           <Trash className="h-4 w-4 text-red-500" />
         )}

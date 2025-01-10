@@ -41,6 +41,9 @@ export const getLanguage = (filename: string) => {
     case "md": {
       return "markdown";
     }
+    case "py": {
+      return "python";
+    }
     default: {
       return;
     }

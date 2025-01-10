@@ -27,7 +27,6 @@ import { useSearchParams } from "next/navigation";
 import DependencyManager from "./DependencyManager";
 import ProjectSelector, { Project } from "./ProjectSelector";
 
-import TourModal from "@/components/TourModal";
 import ShareSnippet from "@/components/editors/ShareSnippet";
 import EditorSettings from "@/components/editors/EditorSettings";
 import useMounted from "@/hooks/useMounted";
@@ -474,6 +473,7 @@ const BaseEditor = ({ projectId }: { projectId: string }) => {
     try {
       if (!projectId) {
         toast.error("Proje ID'si bulunamadı.");
+
         return;
       }
       const response = await axiosInstance.post(`/react/${projectId}/run`);

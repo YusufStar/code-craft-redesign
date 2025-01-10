@@ -13,10 +13,10 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Button } from "@nextui-org/button";
 import { Chrome, Plus, Server, Trash } from "lucide-react";
+import Link from "next/link";
 
 import { axiosInstance } from "@/hooks/useAxios";
 import { languageIcons } from "@/constants/icons";
-import Link from "next/link";
 
 export interface Project {
   id: string;
@@ -121,9 +121,9 @@ const ProjectSelector = ({
 
                     <div className="flex items-center gap-1 ml-auto">
                       <Link
+                        className="p-1.5 flex items-center rounded transition-all duration-150 ease-in-out bg-white/10 hover:bg-black"
                         href={`http://localhost:${project.port}`}
                         target="_blank"
-                        className="p-1.5 flex items-center rounded transition-all duration-150 ease-in-out bg-white/10 hover:bg-black"
                         onClick={(e) => {
                           e.stopPropagation();
                         }}
