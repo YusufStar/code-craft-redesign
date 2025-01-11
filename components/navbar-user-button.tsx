@@ -11,9 +11,11 @@ import { Button } from "@nextui-org/button";
 import { LogOut, Settings, UserIcon } from "lucide-react";
 
 import { useAuthStore } from "@/store/authStore";
+import { Link } from "@nextui-org/link";
+import { paths } from "@/constants/paths";
 
 const NavbarUserButton = () => {
-  const { currentUser, openLoginModal, login, logout } = useAuthStore();
+  const { currentUser, logout } = useAuthStore();
 
   if (currentUser) {
     return (
@@ -71,9 +73,9 @@ const NavbarUserButton = () => {
   }
 
   return (
-    <Button variant="flat" onClick={() => login()}>
-      Login
-    </Button>
+    <Link href={paths.auth.login}>
+      <Button variant="flat">Login</Button>
+    </Link>
   );
 };
 

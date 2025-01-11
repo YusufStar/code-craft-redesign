@@ -3,6 +3,7 @@
 import React from "react";
 import { Button, Link } from "@nextui-org/react";
 import { Blocks } from "lucide-react";
+import { paths } from "@/constants/paths";
 
 export default function NotFoundPage() {
   return (
@@ -26,7 +27,7 @@ export default function NotFoundPage() {
               aşağıdaki butona tıklayarak ana sayfaya dönün.
             </p>
           </div>
-          <Button as={Link} color="primary" href="/">
+          <Button as={Link} color="primary" href={paths.home}>
             Ana Sayfaya Dön
           </Button>
         </div>

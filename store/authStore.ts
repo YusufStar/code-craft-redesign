@@ -10,25 +10,18 @@ import { fetchFolders } from "@/actions/fileActions";
 
 interface AuthState {
   currentUser: User | null;
-  registerModal: boolean;
-  loginModal: boolean;
   loading: boolean;
 
   getUser: () => void;
   updateToken: (token: string) => void;
   login: (email?: string, password?: string) => void;
+  register: (email: string, password: string, username: string) => void;
   logout: () => void;
-  openRegisterModal: () => void;
-  closeRegisterModal: () => void;
-  openLoginModal: () => void;
-  closeLoginModal: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   currentUser: null,
-  registerModal: false,
-  loginModal: false,
-  loading: true,
+  loading: false,
 
   updateToken: async (token) => {
     localStorage.setItem("auth", token);
@@ -46,7 +39,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const { data: currentUser } = await axiosInstance.get("users/me");
       const folders = await fetchFolders();
-      const {data: editorSettings} = await axiosInstance.get("editor-settings");
+      const { data: editorSettings } =
+        await axiosInstance.get("editor-settings");
 
       useFileStore.setState({ folderStructure: folders });
       useEditorStore.getState().setEditorSettings(editorSettings);
@@ -57,6 +51,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       );
       get().logout();
       set({ loading: false });
+    }
+  },
+  register: async (email, password, username) => {
+    try {
+      const { data, status } = await axiosInstance.post("users/register", {
+        email,
+        password,
+        username,
+      });
+
+      if (status === 201) {
+        toast.success(data.message);
+      }
+    } catch (error) {
+      console.error("Auth Register Error: ", error);
     }
   },
   login: async (email, password) => {
@@ -82,8 +91,4 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     toast.success("Başarıyla çıkış yapıldı.");
     set({ currentUser: null });
   },
-  openRegisterModal: () => set({ registerModal: true, loginModal: false }),
-  closeRegisterModal: () => set({ registerModal: false }),
-  openLoginModal: () => set({ loginModal: true, registerModal: false }),
-  closeLoginModal: () => set({ loginModal: false }),
 }));

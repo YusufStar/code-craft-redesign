@@ -8,16 +8,80 @@ import {
   Divider,
   User,
   Checkbox,
+  Form,
 } from "@nextui-org/react";
 import { Icon } from "@iconify/react";
 import { Blocks } from "lucide-react";
 
 import { paths } from "@/constants/paths";
+import { useAuthStore } from "@/store/authStore";
+import { redirect } from "next/navigation";
 
 export default function RegisterView() {
+  const { register } = useAuthStore();
   const [isVisible, setIsVisible] = React.useState(false);
+  const [errors, setErrors] = React.useState<{
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+    username?: string;
+    terms?: string;
+  }>({});
 
   const toggleVisibility = () => setIsVisible(!isVisible);
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const data = Object.fromEntries(formData) as {
+      email?: string;
+      password?: string;
+      username?: string;
+      confirmPassword?: string;
+      terms?: string;
+    };
+
+    const newErrors: {
+      email?: string;
+      password?: string;
+      confirmPassword?: string;
+      terms?: string;
+      username?: string;
+    } = {};
+
+    if (!data.email) {
+      newErrors.email = "Please enter your email address.";
+    } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i.test(data.email)) {
+      newErrors.email = "Invalid email address.";
+    }
+
+    if (!data.password) {
+      newErrors.password = "Please enter your password.";
+    } else if (data.password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters.";
+    }
+
+    if (!data.confirmPassword) {
+      newErrors.confirmPassword = "Please confirm your password.";
+    } else if (data.password !== data.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match.";
+    }
+
+    if (!data.terms) {
+      newErrors.terms = "You must agree to the terms and conditions.";
+    }
+
+    if (!data.username) {
+      newErrors.username = "Please enter your username.";
+    }
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length === 0) {
+      register(data.email!, data.password!, data.username!);
+      redirect(paths.auth.login);
+    }
+  };
 
   return (
     <div className="relative flex min-h-screen max-h-screen h-full w-full">
@@ -66,10 +130,20 @@ export default function RegisterView() {
             <Divider className="flex-1" />
           </div>
 
-          <form
+          <Form
             className="flex w-full flex-col gap-3"
-            onSubmit={(e) => e.preventDefault()}
+            onSubmit={handleSubmit}
+            validationErrors={errors}
+            onReset={() => setErrors({})}
           >
+            <Input
+              isRequired
+              label="Username"
+              name="username"
+              placeholder="Enter username"
+              variant="underlined"
+              errorMessage={errors.username}
+            />
             <Input
               isRequired
               label="Email Address"
@@ -77,6 +151,7 @@ export default function RegisterView() {
               placeholder="Enter your email"
               type="email"
               variant="underlined"
+              errorMessage={errors.email}
             />
             <Input
               isRequired
@@ -100,6 +175,7 @@ export default function RegisterView() {
               placeholder="Create a password"
               type={isVisible ? "text" : "password"}
               variant="underlined"
+              errorMessage={errors.password}
             />
             <Input
               isRequired
@@ -108,8 +184,20 @@ export default function RegisterView() {
               placeholder="Confirm your password"
               type={isVisible ? "text" : "password"}
               variant="underlined"
+              errorMessage={errors.confirmPassword}
             />
-            <Checkbox isRequired className="py-4" size="sm">
+            <Checkbox
+              isRequired
+              className="py-4"
+              size="sm"
+              name="terms"
+              value="true"
+              onChange={(e) =>
+                setErrors((prev) => ({ ...prev, terms: undefined }))
+              }
+              isInvalid={!!errors.terms}
+              validationBehavior="aria"
+            >
               I agree with the&nbsp;
               <Link href="#" size="sm">
                 Terms
@@ -119,10 +207,13 @@ export default function RegisterView() {
                 Privacy Policy
               </Link>
             </Checkbox>
+            {errors.terms && (
+              <span className="text-danger text-small">{errors.terms}</span>
+            )}
             <Button color="primary" type="submit">
               Sign Up
             </Button>
-          </form>
+          </Form>
 
           <p className="text-center text-small">
             Already have an account?&nbsp;

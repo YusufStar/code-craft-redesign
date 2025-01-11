@@ -14,15 +14,44 @@ import { Icon } from "@iconify/react";
 import { Blocks } from "lucide-react";
 
 import { paths } from "@/constants/paths";
+import { useAuthStore } from "@/store/authStore";
+import { redirect } from "next/navigation";
 
 export default function LoginView() {
+  const { login } = useAuthStore();
   const [isVisible, setIsVisible] = React.useState(false);
+  const [errors, setErrors] = React.useState<{
+    email?: string;
+    password?: string;
+  }>({});
 
   const toggleVisibility = () => setIsVisible(!isVisible);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    console.log("handleSubmit");
+    const formData = new FormData(event.currentTarget);
+    const data = Object.fromEntries(formData) as {
+      email?: string;
+      password?: string;
+    };
+
+    const newErrors: { email?: string; password?: string } = {};
+    if (!data.email) {
+      newErrors.email = "Please enter your email address.";
+    } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i.test(data.email)) {
+      newErrors.email = "Invalid email address.";
+    }
+
+    if (!data.password) {
+      newErrors.password = "Please enter your password.";
+    }
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length === 0) {
+      login(data.email!, data.password!)
+      redirect(paths.editor);
+    }
   };
 
   return (
@@ -76,6 +105,8 @@ export default function LoginView() {
             className="flex w-full flex-col gap-3"
             validationBehavior="native"
             onSubmit={handleSubmit}
+            validationErrors={errors}
+            onReset={() => setErrors({})}
           >
             <Input
               isRequired
@@ -84,6 +115,7 @@ export default function LoginView() {
               placeholder="Enter your email"
               type="email"
               variant="underlined"
+              errorMessage={errors.email}
             />
             <Input
               isRequired
@@ -107,6 +139,7 @@ export default function LoginView() {
               placeholder="Enter your password"
               type={isVisible ? "text" : "password"}
               variant="underlined"
+              errorMessage={errors.password}
             />
             <div className="flex w-full items-center justify-between px-1 py-2">
               <Checkbox name="remember" size="sm">
