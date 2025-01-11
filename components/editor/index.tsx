@@ -181,10 +181,12 @@ const TextEditor = ({
         onChange={handleEditorChange}
         onMount={(editor) => {
           editorRef.current = editor;
-          editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-            autoSave();
-            alert("Code saved manually!");
-          });
+          if (monaco) {
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+              autoSave();
+              alert("Code saved manually!");
+            });
+          }
         }}
       />
       {isSaving && <div>Saving...</div>}

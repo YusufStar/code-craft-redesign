@@ -27,7 +27,7 @@ export default function VerifyEmailView() {
               doğrulama bağlantısına tıklayın.
             </p>
           </div>
-          <Button as={Link} href="#" color="primary">
+          <Button as={Link} color="primary" href="#">
             Doğrulama E-postasını Yeniden Gönder
           </Button>
         </div>

@@ -5,8 +5,9 @@ import { Button, Input, User } from "@nextui-org/react";
 import { Blocks } from "lucide-react";
 import { Icon } from "@iconify/react";
 import { useSearchParams } from "next/navigation";
-import { paths } from "@/constants/paths";
 import { Link } from "@nextui-org/link";
+
+import { paths } from "@/constants/paths";
 
 export default function ResetPasswordView() {
   const [isVisible, setIsVisible] = React.useState(false);
@@ -64,19 +65,37 @@ export default function ResetPasswordView() {
                 name="email"
                 placeholder="E-posta adresinizi girin"
                 type="email"
-                variant="underlined"
                 value={email}
+                variant="underlined"
                 onChange={(e) => setEmail(e.target.value)}
               />
             ) : (
               <>
                 <Input
                   isRequired
+                  endContent={
+                    <button type="button" onClick={toggleVisibility}>
+                      {isVisible ? (
+                        <Icon
+                          className="pointer-events-none text-2xl text-default-400"
+                          icon="solar:eye-closed-linear"
+                        />
+                      ) : (
+                        <Icon
+                          className="pointer-events-none text-2xl text-default-400"
+                          icon="solar:eye-bold"
+                        />
+                      )}
+                    </button>
+                  }
                   label="Yeni Şifre"
                   name="password"
                   placeholder="Yeni şifrenizi girin"
                   type={isVisible ? "text" : "password"}
                   variant="underlined"
+                />
+                <Input
+                  isRequired
                   endContent={
                     <button type="button" onClick={toggleVisibility}>
                       {isVisible ? (
@@ -92,29 +111,11 @@ export default function ResetPasswordView() {
                       )}
                     </button>
                   }
-                />
-                <Input
-                  isRequired
                   label="Şifreyi Onayla"
                   name="confirmPassword"
                   placeholder="Yeni şifrenizi tekrar girin"
                   type={isVisible ? "text" : "password"}
                   variant="underlined"
-                  endContent={
-                    <button type="button" onClick={toggleVisibility}>
-                      {isVisible ? (
-                        <Icon
-                          className="pointer-events-none text-2xl text-default-400"
-                          icon="solar:eye-closed-linear"
-                        />
-                      ) : (
-                        <Icon
-                          className="pointer-events-none text-2xl text-default-400"
-                          icon="solar:eye-bold"
-                        />
-                      )}
-                    </button>
-                  }
                 />
               </>
             )}

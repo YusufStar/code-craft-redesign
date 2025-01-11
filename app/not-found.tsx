@@ -22,11 +22,11 @@ export default function NotFoundPage() {
             <p className="text-7xl font-bold text-primary">404</p>
             <p className="pb-2 text-xl font-medium">Sayfa Bulunamadı</p>
             <p className="text-small text-default-500">
-              Aradığınız sayfa mevcut değil. Lütfen URL'yi kontrol edin veya
+              Aradığınız sayfa mevcut değil. Lütfen URL&apos;yi kontrol edin veya
               aşağıdaki butona tıklayarak ana sayfaya dönün.
             </p>
           </div>
-          <Button as={Link} href="/" color="primary">
+          <Button as={Link} color="primary" href="/">
             Ana Sayfaya Dön
           </Button>
         </div>

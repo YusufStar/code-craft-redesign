@@ -40,7 +40,7 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
 
 const BaseEditor = memo(() => {
   const { generateMonaco, loadDefaultTypes } = useMonaco();
-  const [startTourModal, setStartTourModal] = useState(true);
+  const [startTourModal, setStartTourModal] = useState(false);
 
   const { getEditorSettings } = useEditorStore();
   const mounted = useMounted();
@@ -155,13 +155,14 @@ const BaseEditor = memo(() => {
   };
 
   useEffect(() => {
-    // const hasVisited = localStorage.getItem("hasVisited");
-    // if (!hasVisited) {
-    //   setStartTourModal(true);
-    //   localStorage.setItem("hasVisited", "true");
-    // } else {
-    //   setStartTourModal(false);
-    // }
+    const hasVisited = localStorage.getItem("hasVisited");
+
+    if (!hasVisited) {
+      setStartTourModal(true);
+      localStorage.setItem("hasVisited", "true");
+    } else {
+      setStartTourModal(false);
+    }
   }, []);
 
   if (!mounted) return;

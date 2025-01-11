@@ -11,6 +11,7 @@ import {
 } from "@nextui-org/react";
 import { Icon } from "@iconify/react";
 import { Blocks } from "lucide-react";
+
 import { paths } from "@/constants/paths";
 
 export default function RegisterView() {
