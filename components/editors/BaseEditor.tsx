@@ -297,7 +297,7 @@ const BaseEditor = memo(() => {
         </>
       ) : (
         <div className="flex-1 flex items-center justify-center">
-          <TextEditor language="python" />
+          <TextEditor language="javascript" />
         </div>
       )}
     </div>

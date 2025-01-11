@@ -1,197 +1,250 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { useTheme } from "next-themes";
 import Editor from "@monaco-editor/react";
 import { useMonaco } from "@monaco-editor/react";
 import { useCompletion } from "ai/react";
 import debounce from "lodash.debounce";
 
+// Sizin CompletionFormatter dosyanızı da içe aktarın
 import { CompletionFormatter } from "@/components/editor/completion-formatter";
 import { GenerateInstructions } from "@/components/editor/prompt";
 
 interface TextEditorProps {
   language: "javascript" | "typescript" | "python" | "html" | "css";
   cacheSize?: number;
-  refreshInterval?: number;
-  autoSaveInterval?: number;
+  refreshInterval?: number; // API'den öneri alma debounced süresi
+  autoSaveInterval?: number; // Otomatik kaydetme debounced süresi
 }
 
-const TextEditor = ({
+export default function TextEditor({
   language,
   cacheSize = 10,
-  refreshInterval = 500,
-  autoSaveInterval = 5000,
-}: TextEditorProps) => {
+  autoSaveInterval = 3000,
+}: TextEditorProps) {
   const monaco = useMonaco();
   const editorRef = useRef<any>(null);
-  const fetchSuggestionsIntervalRef = useRef<number | undefined>(undefined);
-  const timeoutRef = useRef<number | undefined>(undefined);
-  const [cachedSuggestions, setCachedSuggestions] = useState<any[]>([]);
+
+  // Tek bir completion saklamak için, isterseniz array de kullanabilirsiniz
+  const [cachedSuggestion, setCachedSuggestion] = useState<any | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const { completion, stop, complete } = useCompletion({
+
+  // useCompletion Hook'u
+  const { complete } = useCompletion({
     api: "/api/completion",
     body: { language },
   });
 
-  const debouncedSuggestions = useCallback(
-    debounce(() => {
-      const model = monaco?.editor.getModels()[0];
+  /**
+   * 1) Kod değişikliği ya da imleç hareketi oldukça
+   *    API'ye istek atıp completion çekmeyi deneyeceğiz (debounce ile).
+   */
+  const fetchSuggestion = useCallback(() => {
+    if (!editorRef.current || !monaco) return;
 
-      if (!model || !editorRef.current) return;
+    const model = monaco.editor.getModels()[0];
+    const position = editorRef.current.getPosition();
+    if (!model || !position) return;
 
-      // Clear previous suggestions
-      setCachedSuggestions([]);
+    // Metnin imleç öncesindeki bölümünü al
+    const offset = model.getOffsetAt(position);
+    const textBeforeCursor = model.getValue().substring(0, offset);
 
-      const position = editorRef.current.getPosition();
-      const offset = model.getOffsetAt(position);
-      const textBeforeCursor = model.getValue().substring(0, offset);
+    // Bu da senaryonuza göre, prompt + user message
+    const messages = [
+      GenerateInstructions(language),
+      { content: textBeforeCursor, role: "user", name: "TextBeforeCursor" },
+    ];
 
-      const messages = [
-        GenerateInstructions(language),
-        { content: textBeforeCursor, role: "user", name: "TextBeforeCursor" },
-      ];
+    setCachedSuggestion(null);
 
-      complete("", { body: { messages } })
-        .then((newCompletion) => {
-          if (newCompletion) {
-            const newSuggestion = {
-              insertText: newCompletion.trim(),
-              range: {
-                startLineNumber: position.lineNumber,
-                startColumn: position.column,
-                endLineNumber:
-                  position.lineNumber + (newCompletion.match(/\n/g) || []).length,
-                endColumn: position.column + newCompletion.length,
-              },
-            };
+    // Yeni completion çek
+    complete("", { body: { messages } })
+      .then((newCompletion) => {
+        if (!newCompletion) {
+          setCachedSuggestion(null);
+          return;
+        }
 
-            setCachedSuggestions((prev) =>
-              [...prev, newSuggestion].slice(-cacheSize)
-            );
-          }
-        })
-        .catch(console.error);
-    }, refreshInterval),
-    [monaco, complete, language, cacheSize]
+        // Editor'deki konum bazlı Range
+        const newSuggestionRange = {
+          startLineNumber: position.lineNumber,
+          startColumn: position.column,
+          endLineNumber: position.lineNumber,
+          endColumn: position.column,
+        };
+
+        // Tek sihirli obje tutuyoruz
+        const newSuggestion = {
+          insertText: newCompletion.trim(),
+          range: newSuggestionRange,
+        };
+
+        setCachedSuggestion(newSuggestion);
+      })
+      .catch((error) => {
+        console.error("Completion API hatası:", error);
+        setCachedSuggestion(null);
+      });
+  }, [monaco, complete, language]);
+
+  // Debounce'lı fonksiyon
+  const debouncedFetchSuggestions = useCallback(
+    debounce(fetchSuggestion, 500),
+    [fetchSuggestion]
   );
 
-  const autoSave = useCallback(
-    debounce(() => {
-      if (!editorRef.current) return;
-      const code = editorRef.current.getValue();
+  useEffect(() => {
+    if (!editorRef.current) return;
+    const editor = editorRef.current;
 
-      console.log("Auto-saving code:", code);
-      setIsSaving(true);
-      setTimeout(() => setIsSaving(false), 1000); // Simulate saving delay
-    }, autoSaveInterval),
-    [autoSaveInterval]
+    // 1) Model içeriği değiştiğinde (ör. kullanıcı karakter yazınca)
+    const changeListener = editor.onDidChangeModelContent(() => {
+      debouncedFetchSuggestions(); // 500ms debounce
+    });
+
+    // 2) Enter tuşuna basıldığında, anında tetikle
+    const enterListener = editor.onKeyDown((event: any) => {
+      if (event.keyCode === monaco?.KeyCode.Enter) {
+        // Debounce olmadan direkt
+        fetchSuggestion();
+      }
+    });
+
+    return () => {
+      changeListener.dispose();
+      enterListener.dispose();
+    };
+  }, [debouncedFetchSuggestions, fetchSuggestion]);
+
+  /**
+   * 2) Otomatik kaydetme mekanizması
+   */
+  const autoSaveCode = useCallback(() => {
+    if (!editorRef.current) return;
+    const code = editorRef.current.getValue();
+    setIsSaving(true);
+    // Burada gerçek bir API'ye post edebilirsiniz veya localStorage'a atabilirsiniz
+    setTimeout(() => setIsSaving(false), 800); // Simüle amaçlı
+  }, []);
+
+  // Debounced auto-save fonksiyonu
+  const debouncedAutoSave = useCallback(
+    debounce(autoSaveCode, autoSaveInterval),
+    [autoSaveCode, autoSaveInterval]
   );
 
+  /**
+   * 3) Editor içeriği değiştiğinde hem suggestion'ı, hem auto-save'i tetikle
+   */
   const handleEditorChange = useCallback(() => {
-    debouncedSuggestions();
-    autoSave();
-  }, [debouncedSuggestions, autoSave]);
+    debouncedFetchSuggestions();
+    debouncedAutoSave();
+  }, [debouncedFetchSuggestions, debouncedAutoSave]);
 
+  /**
+   * 4) Inline Completions Provider
+   *    Basit bir şekilde, elimizde bir tane suggestion varsa döndürür,
+   *    yoksa boş array döndürür.
+   */
   useEffect(() => {
     if (!monaco) return;
 
     const provider = monaco.languages.registerInlineCompletionsProvider(
       language,
       {
-        provideInlineCompletions: async (model, position) => {
-          if (cachedSuggestions.length === 0) {
+        provideInlineCompletions(model, position) {
+          if (!cachedSuggestion) {
             return { items: [] };
           }
-
-          const suggestions = cachedSuggestions.filter(
-            (suggestion) =>
-              suggestion.range.startLineNumber === position.lineNumber &&
-              suggestion.range.startColumn >= position.column - 3
+          // Tek bir suggestion döndürdüğümüz senaryo
+          // Gerekirse birden fazla item da oluşturabilirsiniz.
+          const item = new CompletionFormatter(model, position).format(
+            cachedSuggestion.insertText,
+            cachedSuggestion.range
           );
-
-          return {
-            items: suggestions.map((suggestion) =>
-              new CompletionFormatter(model, position).format(
-                suggestion.insertText,
-                suggestion.range
-              )
-            ),
-          };
+          return { items: [item] };
         },
-        freeInlineCompletions: () => {},
+        freeInlineCompletions() {
+          // Boş bir cleanup
+        },
       }
     );
 
-    return () => provider.dispose();
-  }, [monaco, cachedSuggestions, language]);
+    return () => {
+      provider.dispose();
+    };
+  }, [monaco, cachedSuggestion, language]);
 
+  /**
+   * 5) Editor Mount olunca, Ctrl+S kaydet komutu vb.
+   *    Inline suggest ayarını da aktif hâle getiriyoruz.
+   */
+  function handleEditorMount(editor: any) {
+    editorRef.current = editor;
+    if (monaco) {
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+        // Manuel kaydetme
+        autoSaveCode();
+        alert("Kod manuel olarak kaydedildi!");
+      });
+
+      // Inline ghost text özelliğini açık hale getir
+      editor.updateOptions({
+        autoClosingBrackets: false,
+        "inlineSuggest.enabled": true,
+      });
+    }
+  }
+
+  /**
+   * 6) Cursor değiştiğinde de benzer şekilde suggestion iste
+   */
   useEffect(() => {
     if (!editorRef.current) return;
-
     const editor = editorRef.current;
-    const model = editor.getModel();
-
-    const changeListener = model?.onDidChangeContent(() => {
-      debouncedSuggestions();
-    });
 
     const cursorListener = editor.onDidChangeCursorPosition(() => {
-      debouncedSuggestions();
+      debouncedFetchSuggestions();
     });
 
-    const enterListener = editor.onKeyDown((event) => {
-      if (event.keyCode === monaco.KeyCode.Enter) {
-        debouncedSuggestions();
-      }
-    });
-
+    // Cleanup
     return () => {
-      changeListener?.dispose();
       cursorListener?.dispose();
-      enterListener?.dispose();
     };
-  }, [debouncedSuggestions, monaco]);
+  }, [debouncedFetchSuggestions]);
 
+  /**
+   * 7) Unmount aşamasında bellek sızıntılarını engellemek için
+   *    debounce fonksiyonlarını iptal ediyoruz.
+   */
   useEffect(() => {
     return () => {
-      window.clearInterval(fetchSuggestionsIntervalRef.current);
-      window.clearTimeout(timeoutRef.current);
-      debouncedSuggestions.cancel();
-      autoSave.cancel();
+      debouncedFetchSuggestions.cancel();
+      debouncedAutoSave.cancel();
     };
-  }, [debouncedSuggestions, autoSave]);
+  }, [debouncedFetchSuggestions, debouncedAutoSave]);
 
   return (
     <>
       <Editor
+        height="80vh"
         defaultLanguage={language}
-        defaultValue="# Start typing..."
-        height="90vh"
-        loading={<div>Loading editor...</div>}
+        defaultValue=""
+        onMount={handleEditorMount}
+        onChange={handleEditorChange}
+        theme={useTheme().resolvedTheme === "dark" ? "vs-dark" : "vs"}
         options={{
-          autoClosingBrackets: "always",
-          autoClosingQuotes: "always",
           formatOnType: true,
           formatOnPaste: true,
           snippetSuggestions: "inline",
-          trimAutoWhitespace: true,
-        }}
-        theme={useTheme().resolvedTheme === "dark" ? "vs-dark" : "vs"}
-        onChange={handleEditorChange}
-        onMount={(editor) => {
-          editorRef.current = editor;
-          if (monaco) {
-            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-              autoSave();
-              alert("Code saved manually!");
-            });
-          }
+          // Yeni Monaco versiyonlarında inline suggest için bu ayar da işe yarar
+          // "inlineSuggest.enabled": true, // handleEditorMount içinde de set edilebilir
+          tabSize: 2,
         }}
       />
-      {isSaving && <div>Saving...</div>}
+      {isSaving && <div style={{ marginTop: 8 }}>Kaydediliyor...</div>}
     </>
   );
-};
-
-export default TextEditor;
+}
